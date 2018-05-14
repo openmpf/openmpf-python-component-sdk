@@ -24,6 +24,7 @@
 # limitations under the License.                                            #
 #############################################################################
 
+# raise Exception('!!fail!!')
 
 import setuptools
 
