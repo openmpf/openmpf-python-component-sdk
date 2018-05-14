@@ -1,0 +1,79 @@
+{
+  "componentName" : "PythonTestComponent",
+  "componentVersion" : "2.0.0",
+  "middlewareVersion" : "2.0.0",
+  "sourceLanguage" : "python",
+  "batchLibrary" : "${MPF_HOME}/plugins/PythonTestComponent/test_component.py",
+  "environmentVariables" : [],
+  "algorithm" : {
+    "name" : "PYTHONTEST",
+    "description" : "A dummy Python detection component.",
+    "actionType" : "DETECTION",
+    "requiresCollection" : {
+      "states" : []
+    },
+    "providesCollection" : {
+      "states" : [
+        "DETECTION",
+        "DETECTION_TestDetectionType",
+        "DETECTION_TestDetectionType_PYTHONTEST"
+      ],
+      "properties" : [
+        {
+          "name" : "prop1",
+          "description" : "my prop 1",
+          "type" : "INT",
+          "defaultValue" : "2"
+        },
+        {
+          "name" : "prop2",
+          "description" : "my prop 2",
+          "type" : "BOOLEAN",
+          "defaultValue" : "true"
+        },
+        {
+          "name" : "prop3",
+          "description" : "my prop 3",
+          "type" : "STRING",
+          "defaultValue" : "string property"
+        }
+      ]
+    }
+  },
+  "actions" : [
+    {
+      "name": "PYTHON TEST ACTION",
+      "description": "PYTHON TEST ACTION",
+      "algorithm": "PYTHONTEST",
+      "properties": []
+    }
+  ],
+  "tasks": [
+    {
+      "name": "PYTHON TEST TASK",
+      "description": "PYTHON TEST TASK",
+      "actions": [
+        "PYTHON TEST ACTION"
+      ]
+    }
+  ],
+  "pipelines":[
+    {
+      "name": "PYTHON TEST PIPELINE",
+      "description": "PYTHON TEST PIPELINE",
+      "tasks": [
+        "PYTHON TEST TASK"
+      ]
+    },
+    {
+      "name": "PYTHON TEST (WITH MARKUP) PIPELINE",
+      "description": "PYTHON TEST PIPELINE",
+      "tasks": [
+        "PYTHON TEST TASK",
+        "OCV GENERIC MARKUP TASK"
+      ]
+    }
+  ]
+
+}
+
