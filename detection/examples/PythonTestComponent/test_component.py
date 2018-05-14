@@ -24,7 +24,7 @@
 # limitations under the License.                                            #
 #############################################################################
 
-raise Exception('THIS SHOULD FAIL')
+# raise Exception('THIS SHOULD FAIL')
 
 import mpf_component_api as mpf
 
