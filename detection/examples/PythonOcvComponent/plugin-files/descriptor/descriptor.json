@@ -1,0 +1,75 @@
+{
+  "componentName" : "PythonOcvComponent",
+  "componentVersion" : "2.0.0",
+  "middlewareVersion" : "2.0.0",
+  "sourceLanguage" : "python",
+  "batchLibrary" : "PythonOcvComponent",
+  "environmentVariables" : [],
+  "algorithm" : {
+    "name" : "PYTHONOCVTEST",
+    "description" : "A dummy Python detection component.",
+    "actionType" : "DETECTION",
+    "requiresCollection" : {
+      "states" : []
+    },
+    "providesCollection" : {
+      "states" : [
+        "DETECTION"
+      ],
+      "properties" : [
+        {
+          "name" : "prop1",
+          "description" : "my prop 1",
+          "type" : "INT",
+          "defaultValue" : "2"
+        },
+        {
+          "name" : "prop2",
+          "description" : "my prop 2",
+          "type" : "BOOLEAN",
+          "defaultValue" : "true"
+        },
+        {
+          "name" : "prop3",
+          "description" : "my prop 3",
+          "type" : "STRING",
+          "defaultValue" : "string property"
+        }
+      ]
+    }
+  },
+  "actions" : [
+    {
+      "name": "PYTHON OCV TEST ACTION",
+      "description": "PYTHON OCV TEST ACTION",
+      "algorithm": "PYTHONOCVTEST",
+      "properties": []
+    }
+  ],
+  "tasks": [
+    {
+      "name": "PYTHON OCV TEST TASK",
+      "description": "PYTHON OCV TEST TASK",
+      "actions": [
+        "PYTHON OCV TEST ACTION"
+      ]
+    }
+  ],
+  "pipelines":[
+    {
+      "name": "PYTHON OCV TEST PIPELINE",
+      "description": "PYTHON OCV TEST PIPELINE",
+      "tasks": [
+        "PYTHON OCV TEST TASK"
+      ]
+    },
+    {
+      "name": "PYTHON OCV TEST (WITH MARKUP) PIPELINE",
+      "description": "PYTHON OCV TEST PIPELINE",
+      "tasks": [
+        "PYTHON OCV TEST TASK",
+        "OCV GENERIC MARKUP TASK"
+      ]
+    }
+  ]
+}
