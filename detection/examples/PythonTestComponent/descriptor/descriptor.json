@@ -15,8 +15,8 @@
     "providesCollection" : {
       "states" : [
         "DETECTION",
-        "DETECTION_TestDetectionType",
-        "DETECTION_TestDetectionType_PYTHONTEST"
+        "DETECTION_TEST",
+        "DETECTION_TEST_PYTHON"
       ],
       "properties" : [
         {

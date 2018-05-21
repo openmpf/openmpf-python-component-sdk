@@ -14,7 +14,9 @@
     },
     "providesCollection" : {
       "states" : [
-        "DETECTION"
+        "DETECTION",
+        "DETECTION_TEST_OCV",
+        "DETECTION_TEST_OCV_PYTHON"
       ],
       "properties" : [
         {
