@@ -24,19 +24,22 @@
 # limitations under the License.                                            #
 #############################################################################
 
+from . import frame_transformer
+import cv2
 
-import setuptools
 
-setuptools.setup(
-    name='PythonOcvComponent',
-    version='0.1',
-    packages=setuptools.find_packages(),
-    install_requires=(
-        'opencv-python>=3.3',
-        'mpf_component_api>=0.1',
-        'mpf_component_util>=0.1'
-    ),
-    entry_points={
-        'mpf.exported_component': 'component = ocv_component.ocv_component:OcvComponent'
-    }
-)
+class FrameFlipper(frame_transformer.BaseDecoratedFrameTransformer):
+
+    def _do_frame_transform(self, frame, frame_index):
+        #  Flip around y-axis
+        return cv2.flip(frame, 1)
+
+
+    def _do_reverse_transform(self, image_location, frame_index):
+        top_right_x = image_location.x_left_upper + image_location.width
+        width = self.get_frame_size(frame_index).width
+        image_location.x_left_upper = width - top_right_x
+
+
+    def get_frame_size(self, frame_index):
+        return self._get_inner_frame_size(frame_index)

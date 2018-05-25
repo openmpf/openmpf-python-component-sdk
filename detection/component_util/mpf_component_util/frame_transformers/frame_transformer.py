@@ -24,19 +24,68 @@
 # limitations under the License.                                            #
 #############################################################################
 
+import abc
 
-import setuptools
 
-setuptools.setup(
-    name='PythonOcvComponent',
-    version='0.1',
-    packages=setuptools.find_packages(),
-    install_requires=(
-        'opencv-python>=3.3',
-        'mpf_component_api>=0.1',
-        'mpf_component_util>=0.1'
-    ),
-    entry_points={
-        'mpf.exported_component': 'component = ocv_component.ocv_component:OcvComponent'
-    }
-)
+class IFrameTransformer(object):
+    __metaclass__ = abc.ABCMeta
+
+    @abc.abstractmethod
+    def transform_frame(self, frame, frame_index):
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def reverse_transform(self, image_location, frame_index):
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def get_frame_size(self, frame_index):
+        raise NotImplementedError()
+
+
+
+class NoOpTransformer(IFrameTransformer):
+    def __init__(self, frame_size):
+        self.__frame_size = frame_size
+
+    def get_frame_size(self, frame_index):
+        return self.__frame_size
+
+    def transform_frame(self, frame, frame_index):
+        return frame
+
+    def reverse_transform(self, image_location, frame_index):
+        pass
+
+
+
+class BaseDecoratedFrameTransformer(IFrameTransformer):
+    __metaclass__ = abc.ABCMeta
+
+    def __init__(self, inner_transform):
+        self.__inner_transform = inner_transform
+
+
+    def transform_frame(self, frame, frame_index):
+        frame = self.__inner_transform.transform_frame(frame, frame_index)
+        return self._do_frame_transform(frame, frame_index)
+
+
+    def reverse_transform(self, image_location, frame_index):
+        self._do_reverse_transform(image_location, frame_index)
+        self.__inner_transform.reverse_transform(image_location, frame_index)
+
+
+    def _get_inner_frame_size(self, frame_index):
+        return self.__inner_transform.get_frame_size(frame_index)
+
+
+    @abc.abstractmethod
+    def _do_frame_transform(self, frame, frame_index):
+        raise NotImplementedError()
+
+
+    @abc.abstractmethod
+    def _do_reverse_transform(self, image_location, frame_index):
+        raise NotImplementedError()
+

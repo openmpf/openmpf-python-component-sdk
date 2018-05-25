@@ -27,30 +27,32 @@
 
 import cv2
 import mpf_component_api as mpf
+import mpf_component_util as mpf_util
 
 
 logger = mpf.configure_logging('python-ocv-test.log', __name__ == '__main__')
 
 
-class OcvComponent(object):
+class OcvComponent(mpf_util.ImageReaderMixin, object):
     detection_type = 'TEST OCV DETECTION TYPE'
 
 
     @staticmethod
-    def get_detections_from_image(image_job):
+    def get_detections_from_image_reader(image_job, image_reader):
         logger.info('[%s] Received image job: %s', image_job.job_name, image_job)
 
+        mpf_util.ImageReader(image_job)
         img = cv2.imread(image_job.data_uri)
 
         height, width, _ = img.shape
         logger.info('[%s] Image at %s: width = %s, height = %s', image_job.job_name, image_job.data_uri, width, height)
 
-        detection_sz = 10
-        yield mpf.ImageLocation(0, height / 2 - detection_sz, width - 1, detection_sz, -1.0,
-                                mpf.Properties(METADATA='full_width'))
-
+        detection_sz = 20
         yield mpf.ImageLocation(width / 2 - detection_sz, 0, detection_sz, height - 1, -1.0,
                                 mpf.Properties(METADATA='full_height'))
+
+        yield mpf.ImageLocation(0, 0, width / 4, height / 4, -1,
+                                mpf.Properties(METADATA='top left corner, .25 width and .25 height of image'))
 
 
     @staticmethod

@@ -24,19 +24,43 @@
 # limitations under the License.                                            #
 #############################################################################
 
+from . import frame_transformers
+from . import utils
+import cv2
+import abc
 
-import setuptools
 
-setuptools.setup(
-    name='PythonOcvComponent',
-    version='0.1',
-    packages=setuptools.find_packages(),
-    install_requires=(
-        'opencv-python>=3.3',
-        'mpf_component_api>=0.1',
-        'mpf_component_util>=0.1'
-    ),
-    entry_points={
-        'mpf.exported_component': 'component = ocv_component.ocv_component:OcvComponent'
-    }
-)
+class ImageReader(object):
+    def __init__(self, image_job):
+        image = cv2.imread(image_job.data_uri, cv2.IMREAD_IGNORE_ORIENTATION + cv2.IMREAD_COLOR)
+        size = utils.Size.from_frame(image)
+        self.__frame_transformer = frame_transformers.factory.get_transformer(image_job, size)
+        self.__image = self.__frame_transformer.transform_frame(image, 0)
+
+    def get_image(self):
+        return self.__image
+
+    def reverse_transform(self, image_location):
+        self.__frame_transformer.reverse_transform(image_location, 0)
+
+
+
+def image_reader_wrapper(image_job, fn):
+    image_reader = ImageReader(image_job)
+    results = fn(image_job, image_reader)
+    for result in results:
+        image_reader.reverse_transform(result)
+        yield result
+
+
+class ImageReaderMixin(object):
+    __metaclass__ = abc.ABCMeta
+
+    def get_detections_from_image(self, image_job):
+        return image_reader_wrapper(image_job, self.get_detections_from_image_reader)
+
+    @abc.abstractmethod
+    def get_detections_from_image_reader(self, image_job, image_reader):
+        raise NotImplementedError()
+
+
