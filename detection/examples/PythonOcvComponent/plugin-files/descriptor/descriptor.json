@@ -1,12 +1,12 @@
 {
-  "componentName" : "PythonTestComponent",
+  "componentName" : "PythonOcvComponent",
   "componentVersion" : "2.0.0",
   "middlewareVersion" : "2.0.0",
   "sourceLanguage" : "python",
-  "batchLibrary" : "${MPF_HOME}/plugins/PythonTestComponent/test_component.py",
+  "batchLibrary" : "PythonOcvComponent",
   "environmentVariables" : [],
   "algorithm" : {
-    "name" : "PYTHONTEST",
+    "name" : "PYTHONOCVTEST",
     "description" : "A dummy Python detection component.",
     "actionType" : "DETECTION",
     "requiresCollection" : {
@@ -15,8 +15,8 @@
     "providesCollection" : {
       "states" : [
         "DETECTION",
-        "DETECTION_TEST",
-        "DETECTION_TEST_PYTHON"
+        "DETECTION_TEST_OCV",
+        "DETECTION_TEST_OCV_PYTHON"
       ],
       "properties" : [
         {
@@ -42,38 +42,36 @@
   },
   "actions" : [
     {
-      "name": "PYTHON TEST ACTION",
-      "description": "PYTHON TEST ACTION",
-      "algorithm": "PYTHONTEST",
+      "name": "PYTHON OCV TEST ACTION",
+      "description": "PYTHON OCV TEST ACTION",
+      "algorithm": "PYTHONOCVTEST",
       "properties": []
     }
   ],
   "tasks": [
     {
-      "name": "PYTHON TEST TASK",
-      "description": "PYTHON TEST TASK",
+      "name": "PYTHON OCV TEST TASK",
+      "description": "PYTHON OCV TEST TASK",
       "actions": [
-        "PYTHON TEST ACTION"
+        "PYTHON OCV TEST ACTION"
       ]
     }
   ],
   "pipelines":[
     {
-      "name": "PYTHON TEST PIPELINE",
-      "description": "PYTHON TEST PIPELINE",
+      "name": "PYTHON OCV TEST PIPELINE",
+      "description": "PYTHON OCV TEST PIPELINE",
       "tasks": [
-        "PYTHON TEST TASK"
+        "PYTHON OCV TEST TASK"
       ]
     },
     {
-      "name": "PYTHON TEST (WITH MARKUP) PIPELINE",
-      "description": "PYTHON TEST PIPELINE",
+      "name": "PYTHON OCV TEST (WITH MARKUP) PIPELINE",
+      "description": "PYTHON OCV TEST PIPELINE",
       "tasks": [
-        "PYTHON TEST TASK",
+        "PYTHON OCV TEST TASK",
         "OCV GENERIC MARKUP TASK"
       ]
     }
   ]
-
 }
-
