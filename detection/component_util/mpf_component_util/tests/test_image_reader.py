@@ -32,18 +32,6 @@ import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
 
-def is_all_same_color(image, color_tuple):
-    return (image == color_tuple).all()
-
-
-def is_all_black(image):
-    return is_all_same_color(image, (0, 0, 0))
-
-
-def is_all_white(image):
-    return is_all_same_color(image, (255, 255, 255))
-
-
 def images_equal(im1, im2):
     return (im1 == im2).all()
 
@@ -76,7 +64,7 @@ class TestImageReader(unittest.TestCase):
         self.assertEqual((160, 100), image_size)
 
         # Check if all black
-        self.assertTrue(is_all_black(image))
+        self.assertTrue(test_util.is_all_black(image))
 
         self._assert_reverse_transform(image_reader, (0, 0, 160, 100), (80, 50, 160, 100))
 
@@ -93,7 +81,7 @@ class TestImageReader(unittest.TestCase):
 
         # Check if all white
         self.assertTrue((image == (255, 255, 255)).all())
-        self.assertTrue(is_all_white(image))
+        self.assertTrue(test_util.is_all_white(image))
 
 
     def test_frame_flip(self):
@@ -104,8 +92,8 @@ class TestImageReader(unittest.TestCase):
         original_black_corner = original_image[170:, 300:]
 
         self.assertEqual((320, 200), mpf_util.Size.from_frame(original_image))
-        self.assertTrue(is_all_white(original_white_corner))
-        self.assertTrue(is_all_black(original_black_corner))
+        self.assertTrue(test_util.is_all_white(original_white_corner))
+        self.assertTrue(test_util.is_all_black(original_black_corner))
 
         self._assert_reverse_transform(original_image_reader, (0, 170, 20, 30), (0, 170, 20, 30))
 
@@ -118,8 +106,8 @@ class TestImageReader(unittest.TestCase):
         flipped_black_corner = flipped_image[170:, :20]
         flipped_white_corner = flipped_image[170:, 300:]
 
-        self.assertTrue(is_all_black(flipped_black_corner))
-        self.assertTrue(is_all_white(flipped_white_corner))
+        self.assertTrue(test_util.is_all_black(flipped_black_corner))
+        self.assertTrue(test_util.is_all_white(flipped_white_corner))
         self.assertTrue(images_equal(original_black_corner, flipped_black_corner))
         self.assertTrue(images_equal(original_white_corner, flipped_white_corner))
 
@@ -133,7 +121,7 @@ class TestImageReader(unittest.TestCase):
         image = image_reader.get_image()
 
         self.assertEqual((200, 320), mpf_util.Size.from_frame(image))
-        self.assertTrue(is_all_black(image[300:, :30]))
+        self.assertTrue(test_util.is_all_black(image[300:, :30]))
         self._assert_reverse_transform(image_reader, (0, 300, 30, 20), (300, 170, 20, 30))
 
 
@@ -175,14 +163,14 @@ class ImageReaderMixinComponent(mpf_util.ImageReaderMixin, object):
 
         image = image_reader.get_image()
         top_left_corner = image[:20, :30]
-        test.assertTrue(is_all_black(top_left_corner))
+        test.assertTrue(test_util.is_all_black(top_left_corner))
         bottom_right_corner = image[80:, 50:]
-        test.assertTrue(is_all_black(bottom_right_corner))
+        test.assertTrue(test_util.is_all_black(bottom_right_corner))
 
         top_right_corner = image[:20, 50:]
-        test.assertTrue(is_all_white(top_right_corner))
+        test.assertTrue(test_util.is_all_white(top_right_corner))
         bottom_left_corner = image[80:, :30]
-        test.assertTrue(is_all_white(bottom_left_corner))
+        test.assertTrue(test_util.is_all_white(bottom_left_corner))
 
         for corner in (top_left_corner, bottom_right_corner, top_right_corner, bottom_left_corner):
             test.assertEqual(mpf_util.Size(30, 20), mpf_util.Size.from_frame(corner))

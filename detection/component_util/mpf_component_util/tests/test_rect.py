@@ -67,10 +67,11 @@ class TestRect(unittest.TestCase):
         self.assertEqual((2, 3, 8, 13), union)
 
         rect1 = mpf_util.Rect(1, 3, 8, 4)
-        rect2 = mpf_util.Rect(6, 5, 9, 5)
-        union = rect1.union(rect2)
-        self.assertEqual(union, rect2.union(rect1))
+        rect2_args = (6, 5, 9, 5)
+        union = rect1.union(rect2_args)
+        self.assertEqual(union, mpf_util.Rect(*rect2_args).union(rect1))
         self.assertEqual((1, 3, 14, 7), union)
+
 
 
     def test_rect_intersection(self):
@@ -81,14 +82,14 @@ class TestRect(unittest.TestCase):
         self.assertEqual(rect2, intersection)
 
         rect1 = mpf_util.Rect(2, 6, 5, 10)
-        rect2 = mpf_util.Rect(4, 3, 6, 9)
-        intersection = rect1.intersection(rect2)
-        self.assertEqual(intersection, rect2.intersection(rect1))
+        rect2_args = (mpf_util.Point(4, 3), mpf_util.Point(10, 12))
+        intersection = rect1.intersection(rect2_args)
+        self.assertEqual(intersection, mpf_util.Rect.from_corners(*rect2_args).intersection(rect1))
         self.assertEqual((4, 6, 3, 6), intersection)
 
         rect1 = mpf_util.Rect(1, 3, 8, 4)
-        rect2 = mpf_util.Rect(6, 5, 9, 5)
-        intersection = rect1.intersection(rect2)
-        self.assertEqual(intersection, rect2.intersection(rect1))
+        rect2_args = ((6, 5), mpf_util.Size(9, 5))
+        intersection = rect1.intersection(rect2_args)
+        self.assertEqual(intersection, mpf_util.Rect.from_corner_and_size(*rect2_args).intersection(rect1))
         self.assertEqual((6, 5, 3, 2), intersection)
 

@@ -26,4 +26,6 @@
 
 from .image_reader import ImageReader, ImageReaderMixin
 
+from .video_capture import VideoCapture, VideoCaptureMixin
+
 from .utils import *

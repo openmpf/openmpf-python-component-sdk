@@ -27,7 +27,6 @@
 from . import frame_transformers
 from . import utils
 import cv2
-import abc
 
 
 class ImageReader(object):
@@ -45,21 +44,18 @@ class ImageReader(object):
 
 
 
-def image_reader_wrapper(image_job, fn):
+def image_reader_wrapper(image_job, get_detections_fn):
     image_reader = ImageReader(image_job)
-    results = fn(image_job, image_reader)
+    results = get_detections_fn(image_job, image_reader)
     for result in results:
         image_reader.reverse_transform(result)
         yield result
 
 
 class ImageReaderMixin(object):
-    __metaclass__ = abc.ABCMeta
-
     def get_detections_from_image(self, image_job):
         return image_reader_wrapper(image_job, self.get_detections_from_image_reader)
 
-    @abc.abstractmethod
     def get_detections_from_image_reader(self, image_job, image_reader):
         raise NotImplementedError()
 

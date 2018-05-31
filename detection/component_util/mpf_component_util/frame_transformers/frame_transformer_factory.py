@@ -3,22 +3,25 @@ from .. import utils
 
 
 def get_transformer(job, input_frame_size):
+    ff_frame_locations = dict()
     if hasattr(job, 'feed_forward_track'):
-        ff_track = job.feed_forward_track
+        if job.feed_forward_track is not None:
+            ff_frame_locations = job.feed_forward_track.frame_locations
+
     elif hasattr(job, 'feed_forward_location'):
-        ff_track = {0: job.feed_forward_location}
-    else:
-        ff_track = dict()
-    return _get_transformer(job, input_frame_size, ff_track)
+        if job.feed_forward_location is not None:
+            ff_frame_locations = {0: job.feed_forward_location}
+
+    return _get_transformer(job, input_frame_size, ff_frame_locations)
 
 
 
-def _get_transformer(job, input_frame_size, feed_forward_track):
+def _get_transformer(job, input_frame_size, ff_frame_locations):
     transformer = frame_transformer.NoOpTransformer(input_frame_size)
 
     transformer = _add_rotator_if_needed(job.job_properties, job.media_properties, transformer)
     transformer = _add_flipper_if_needed(job.job_properties, job.media_properties, transformer)
-    transformer = _add_cropper_if_needed(job, input_frame_size, feed_forward_track, transformer)
+    transformer = _add_cropper_if_needed(job, input_frame_size, ff_frame_locations, transformer)
 
     return transformer
 
@@ -52,7 +55,7 @@ def _add_flipper_if_needed(job_properties, media_properties, current_transformer
         return current_transformer
 
 
-def _add_cropper_if_needed(job, input_frame_size, feed_forward_track, current_transformer):
+def _add_cropper_if_needed(job, input_frame_size, ff_frame_locations, current_transformer):
     exact_region_enabled = 'REGION' == job.job_properties.get('FEED_FORWARD_TYPE', '').upper()
     superset_region_enabled = 'SUPERSET_REGION' == job.job_properties.get('FEED_FORWARD_TYPE', '').upper()
     search_region_enabled = utils.get_property(job.job_properties, 'SEARCH_REGION_ENABLE_DETECTION', False)
@@ -61,10 +64,10 @@ def _add_cropper_if_needed(job, input_frame_size, feed_forward_track, current_tr
         return current_transformer
 
     if exact_region_enabled:
-        return frame_cropper.FeedForwardFrameCropper(current_transformer, feed_forward_track)
+        return frame_cropper.FeedForwardFrameCropper(current_transformer, ff_frame_locations)
 
     if superset_region_enabled:
-        region_of_interest = _get_superset_region(feed_forward_track)
+        region_of_interest = _get_superset_region(ff_frame_locations)
     else:
         region_of_interest = _get_search_region(job.job_properties, input_frame_size)
 
@@ -77,11 +80,11 @@ def _add_cropper_if_needed(job, input_frame_size, feed_forward_track, current_tr
 
 
 
-def _get_superset_region(feed_forward_track):
-    if not feed_forward_track:
+def _get_superset_region(ff_frame_locations):
+    if not ff_frame_locations:
         raise IndexError('FEED_FORWARD_TYPE: SUPERSET_REGION is enabled, but feed forward track was empty.')
 
-    image_location_iter = feed_forward_track.itervalues()
+    image_location_iter = ff_frame_locations.itervalues()
     first_loc = image_location_iter.next()
 
     region = utils.Rect.from_image_location(first_loc)

@@ -33,7 +33,7 @@ import mpf_component_util as mpf_util
 logger = mpf.configure_logging('python-ocv-test.log', __name__ == '__main__')
 
 
-class OcvComponent(mpf_util.ImageReaderMixin, object):
+class OcvComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, object):
     detection_type = 'TEST OCV DETECTION TYPE'
 
 
@@ -41,8 +41,7 @@ class OcvComponent(mpf_util.ImageReaderMixin, object):
     def get_detections_from_image_reader(image_job, image_reader):
         logger.info('[%s] Received image job: %s', image_job.job_name, image_job)
 
-        mpf_util.ImageReader(image_job)
-        img = cv2.imread(image_job.data_uri)
+        img = image_reader.get_image()
 
         height, width, _ = img.shape
         logger.info('[%s] Image at %s: width = %s, height = %s', image_job.job_name, image_job.data_uri, width, height)
@@ -55,24 +54,17 @@ class OcvComponent(mpf_util.ImageReaderMixin, object):
                                 mpf.Properties(METADATA='top left corner, .25 width and .25 height of image'))
 
 
+
     @staticmethod
-    def get_detections_from_video(video_job):
+    def get_detections_from_video_capture(video_job, video_capture):
         logger.info('[%s] Received video job: %s', video_job.job_name, video_job)
 
-        video_cap = cv2.VideoCapture(video_job.data_uri)
-        height = video_cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
-        width = video_cap.get(cv2.CAP_PROP_FRAME_WIDTH)
-
-        start_frame = video_job.start_frame
-        stop_frame = video_job.stop_frame
+        width, height = video_capture.get_frame_size()
 
         detections = mpf.FrameLocationMap()
         last_il = mpf.ImageLocation(width / 2 - 1, height / 2 - 1, 2, 2)
         last_frame_read = 0
-        for idx in xrange(start_frame, stop_frame + 1):
-            was_read, frame = video_cap.read()
-            if not was_read:
-                break
+        for idx, frame in enumerate(video_capture):
             last_frame_read = idx
             last_il = mpf.ImageLocation(
                 max(0, last_il.x_left_upper - 1),
@@ -83,4 +75,7 @@ class OcvComponent(mpf_util.ImageReaderMixin, object):
 
         if not detections:
             return ()
-        return [mpf.VideoTrack(start_frame, last_frame_read, -1, detections)]
+        return [mpf.VideoTrack(0, last_frame_read, frame_locations=detections)]
+
+
+

@@ -20,6 +20,17 @@ def get_property(properties, key, default_value, prop_type=None):
 
 
 
+def dict_items_ordered_by_key(dict_, cmp=None, key=None, reverse=False):
+    ordered_keys = sorted(dict_, cmp=cmp, key=key, reverse=reverse)
+    return ((k, dict_[k]) for k in ordered_keys)
+
+
+def dict_values_ordered_by_key(dict_):
+    return (v for k, v in dict_items_ordered_by_key(dict_))
+
+
+
+
 Point = collections.namedtuple('Point', ('x', 'y'))
 
 
@@ -112,4 +123,4 @@ class Rect(collections.namedtuple('Rect', ('x', 'y', 'width', 'height'))):
                 return Rect.from_corners(obj1, obj2)
             if isinstance(obj2, Size):
                 return Rect.from_corner_and_size(obj1, obj2)
-        raise TypeError('Could not convert argument %s to Rect.' % obj)
+        raise TypeError('Could not convert argument %s to Rect.' % (obj,))

@@ -71,11 +71,9 @@ class SearchRegionFrameCropper(_BaseFrameCropper):
 class FeedForwardFrameCropper(_BaseFrameCropper):
     def __init__(self, inner_transform, frame_location_map):
         super(FeedForwardFrameCropper, self).__init__(inner_transform)
+        self.__fed_forward_detections = [utils.Rect.from_image_location(loc)
+                                         for loc in utils.dict_values_ordered_by_key(frame_location_map)]
 
-        frame_indices = sorted(frame_location_map.keys())
-        ordered_frame_locations = (frame_location_map[k] for k in frame_indices)
-
-        self.__fed_forward_detections = [utils.Rect.from_image_location(loc) for loc in ordered_frame_locations]
 
     def _get_region_of_interest(self, frame_index):
         try:

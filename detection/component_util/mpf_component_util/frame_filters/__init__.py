@@ -1,5 +1,3 @@
-#! /usr/bin/env python
-
 #############################################################################
 # NOTICE                                                                    #
 #                                                                           #
@@ -26,13 +24,10 @@
 # limitations under the License.                                            #
 #############################################################################
 
-import os
-import sys
-import unittest
+from .interval_frame_filter import IntervalFrameFilter
+from .frame_list_filters import FeedForwardFrameFilter, KeyFrameFilter
+from .seek_strategies import SetFramePositionSeek
 
-if __name__ == '__main__':
-    test_argv = list(sys.argv)
-    if len(test_argv) == 1:
-        test_argv.extend(('discover', '--start-directory', os.path.dirname(__file__), '--buffer'))
 
-    unittest.main(argv=test_argv)
+def get_no_op_filter(frame_count):
+    return IntervalFrameFilter(0, frame_count - 1, 1)

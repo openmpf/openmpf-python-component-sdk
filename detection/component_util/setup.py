@@ -33,5 +33,6 @@ setuptools.setup(
     description='OpenMPF Python Component Utilities',
     version='0.1',
     packages=setuptools.find_packages(exclude=('*test*',)),
-    install_requires=('opencv-python>=3.3',)
+    install_requires=('opencv-python>=3.3',),
+    test_suite='mpf_component_util.tests',
 )

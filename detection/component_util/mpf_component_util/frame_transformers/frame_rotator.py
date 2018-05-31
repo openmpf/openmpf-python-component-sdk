@@ -88,5 +88,3 @@ class FrameRotator(frame_transformer.BaseDecoratedFrameTransformer):
             return utils.Size(inner_size.height, inner_size.width)
         else:
             return inner_size
-
-
