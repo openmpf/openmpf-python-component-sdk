@@ -25,8 +25,10 @@
 #############################################################################
 
 
+import os
 import setuptools
 
+os.chdir(os.path.dirname(__file__))
 
 setuptools.setup(
     name='mpf_component_util',
@@ -34,5 +36,5 @@ setuptools.setup(
     version='0.1',
     packages=setuptools.find_packages(exclude=('*test*',)),
     install_requires=('opencv-python>=3.3',),
-    test_suite='mpf_component_util.tests',
+    test_suite='tests',
 )

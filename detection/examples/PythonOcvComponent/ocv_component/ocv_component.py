@@ -62,15 +62,15 @@ class OcvComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, object
         width, height = video_capture.get_frame_size()
 
         detections = mpf.FrameLocationMap()
-        last_il = mpf.ImageLocation(width / 2 - 1, height / 2 - 1, 2, 2)
+        expand_rate = 5
+        last_il = mpf.ImageLocation(0, 0, 1, 1)
         last_frame_read = 0
         for idx, frame in enumerate(video_capture):
             last_frame_read = idx
             last_il = mpf.ImageLocation(
-                max(0, last_il.x_left_upper - 1),
-                max(0, last_il.y_left_upper - 1),
-                min(width - 1, last_il.width + 2),
-                min(height - 1, last_il.height + 2))
+                0, 0,
+                min(width - 1, last_il.width + expand_rate),
+                min(height - 1, last_il.height + expand_rate))
             detections[idx] = last_il
 
         if not detections:
