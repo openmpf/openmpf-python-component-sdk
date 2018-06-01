@@ -27,6 +27,7 @@
 
 import collections
 import logging
+import logging.handlers
 import sys
 import mpf_component_api_util as util
 
@@ -147,12 +148,10 @@ def configure_logging(log_file_name, debug=False):
         handler = logging.StreamHandler(sys.stdout)
     else:
         logger.setLevel(logging.INFO)
-        handler = logging.FileHandler(util.get_full_log_path(log_file_name))
+        # handler = logging.FileHandler(util.get_full_log_path(log_file_name))
+        handler = logging.handlers.TimedRotatingFileHandler(util.get_full_log_path(log_file_name), when='midnight')
 
     # Example log line: 2018-05-03 14:41:11,703 INFO  [test_component.py:44] - Logged message
     handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)-5s [%(filename)s:%(lineno)d] - %(message)s'))
     logger.addHandler(handler)
     return logger
-
-
-
