@@ -61,21 +61,24 @@ class Rect(collections.namedtuple('Rect', ('x', 'y', 'width', 'height'))):
     def tl(self):
         return Point(self.x, self.y)
 
+    @property
     def empty(self):
-        return self.area() <= 0
+        return self.area <= 0
 
+    @property
     def area(self):
         return self.width * self.height
 
+    @property
     def size(self):
         return Size(self.width, self.height)
 
     def union(self, other):
         other = Rect.__rectify(other)
 
-        if self.empty():
+        if self.empty:
             return other
-        elif other.empty():
+        elif other.empty:
             return self
         else:
             return Rect.from_corners(

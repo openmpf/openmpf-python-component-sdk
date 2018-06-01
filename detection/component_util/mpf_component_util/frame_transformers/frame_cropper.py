@@ -33,7 +33,7 @@ class _BaseFrameCropper(frame_transformer.BaseDecoratedFrameTransformer):
     __metaclass__ = abc.ABCMeta
 
     def get_frame_size(self, frame_index):
-        return self._get_region_of_interest(frame_index).size()
+        return self._get_region_of_interest(frame_index).size
 
 
     def _do_frame_transform(self, frame, frame_index):

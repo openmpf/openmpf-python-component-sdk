@@ -25,7 +25,6 @@
 #############################################################################
 
 
-import cv2
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
@@ -59,7 +58,7 @@ class OcvComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, object
     def get_detections_from_video_capture(video_job, video_capture):
         logger.info('[%s] Received video job: %s', video_job.job_name, video_job)
 
-        width, height = video_capture.get_frame_size()
+        width, height = video_capture.frame_size
 
         detections = mpf.FrameLocationMap()
         expand_rate = 5

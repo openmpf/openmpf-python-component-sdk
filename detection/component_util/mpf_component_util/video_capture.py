@@ -89,7 +89,8 @@ class VideoCapture(object):
         self.__cv_video_capture.release()
 
 
-    def get_frame_count(self):
+    @property
+    def frame_count(self):
         return self.__frame_filter.get_segment_frame_count()
 
 
@@ -101,26 +102,31 @@ class VideoCapture(object):
         return self.__update_original_frame_position(original_position)
 
 
-    def get_current_frame_position(self):
+    @property
+    def current_frame_position(self):
         return self.__frame_filter.original_to_segment_frame_position(self.__frame_position)
 
 
-    def get_frame_rate(self):
+    @property
+    def frame_rate(self):
         original_frame_rate = self.__get_property(cv2.CAP_PROP_FPS)
         return self.__frame_filter.get_segment_frame_rate(original_frame_rate)
 
 
-    def get_frame_size(self):
-        return self.__frame_transformer.get_frame_size(max(0, self.get_current_frame_position() - 1))
+    @property
+    def frame_size(self):
+        return self.__frame_transformer.get_frame_size(max(0, self.current_frame_position - 1))
 
 
-    def get_original_frame_size(self):
+    @property
+    def original_frame_size(self):
         width = int(self.__get_property(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(self.__get_property(cv2.CAP_PROP_FRAME_HEIGHT))
         return utils.Size(width, height)
 
 
-    def get_frame_position_ratio(self):
+    @property
+    def frame_position_ratio(self):
         return self.__frame_filter.get_segment_frame_position_ratio(self.__frame_position)
 
 
@@ -131,7 +137,8 @@ class VideoCapture(object):
         return self.__update_original_frame_position(frame_position)
 
 
-    def get_current_time_in_millis(self):
+    @property
+    def current_time_in_millis(self):
         original_frame_rate = self.__get_property(cv2.CAP_PROP_FPS)
         return self.__frame_filter.get_current_segment_time_in_millis(self.__frame_position, original_frame_rate)
 
@@ -144,17 +151,17 @@ class VideoCapture(object):
 
     def get_property(self, property_id):
         if property_id == cv2.CAP_PROP_FRAME_WIDTH:
-            return self.get_frame_size().width
+            return self.frame_size.width
         elif property_id == cv2.CAP_PROP_FRAME_HEIGHT:
-            return self.get_frame_size().height
+            return self.frame_size.height
         elif property_id == cv2.CAP_PROP_FPS:
-            return self.get_frame_rate()
+            return self.frame_rate
         elif property_id == cv2.CAP_PROP_POS_FRAMES:
-            return self.get_current_frame_position()
+            return self.current_frame_position
         elif property_id == cv2.CAP_PROP_POS_AVI_RATIO:
-            return self.get_frame_position_ratio()
+            return self.frame_position_ratio
         elif property_id == cv2.CAP_PROP_POS_MSEC:
-            return self.get_current_time_in_millis()
+            return self.current_time_in_millis
         else:
             return self.__get_property(property_id)
 
@@ -172,7 +179,8 @@ class VideoCapture(object):
             return self.__set_property(property_id, value)
 
 
-    def get_four_char_codec_code(self):
+    @property
+    def four_char_codec_code(self):
         return int(self.__get_property(cv2.CAP_PROP_FOURCC))
 
 
@@ -235,15 +243,15 @@ class VideoCapture(object):
 
     def __get_frame_transformer(self, frame_transformers_enabled, video_job):
         if frame_transformers_enabled:
-            return frame_transformers.factory.get_transformer(video_job, self.get_original_frame_size())
+            return frame_transformers.factory.get_transformer(video_job, self.original_frame_size)
         else:
-            return frame_transformers.NoOpTransformer(self.get_original_frame_size())
+            return frame_transformers.NoOpTransformer(self.original_frame_size)
 
 
     def __read_and_transform(self):
         was_read, frame = self.__cv_video_capture.read()
         if was_read:
-            frame = self.__frame_transformer.transform_frame(frame, self.get_current_frame_position())
+            frame = self.__frame_transformer.transform_frame(frame, self.current_frame_position)
             self.__frame_position += 1
         return was_read, frame
 

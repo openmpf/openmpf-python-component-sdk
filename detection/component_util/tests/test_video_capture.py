@@ -273,7 +273,7 @@ class FrameFilterTest(unittest.TestCase):
         else:
             cap = create_video_capture(*cap_or_cap_args)
 
-        self.assertEqual(len(expected_frames), cap.get_frame_count())
+        self.assertEqual(len(expected_frames), cap.frame_count)
         num_read = 0
         for expected_frame_idx, frame in itertools.izip(expected_frames, cap):
             num_read += 1
@@ -320,26 +320,26 @@ class FrameFilterTest(unittest.TestCase):
         cap = create_video_capture(10, 15)
 
         self.assertTrue(cap.set_frame_position(4))
-        self.assertEqual(4, cap.get_current_frame_position())
+        self.assertEqual(4, cap.current_frame_position)
 
         self.assertFalse(cap.set_frame_position(10))
-        self.assertEqual(4, cap.get_current_frame_position())
+        self.assertEqual(4, cap.current_frame_position)
 
         self.assertFalse(cap.set_frame_position(-1))
-        self.assertEqual(4, cap.get_current_frame_position())
+        self.assertEqual(4, cap.current_frame_position)
 
         # cv2.VideoCapture does not allow you to set the frame position to the number of frames in the video.
         # However, after you read the last frame in the video, cv::VideoCapture's frame position will equal the number
         # of frames in the video.
-        self.assertFalse(cap.set_frame_position(cap.get_frame_count()))
-        self.assertEqual(4, cap.get_current_frame_position())
+        self.assertFalse(cap.set_frame_position(cap.frame_count))
+        self.assertEqual(4, cap.current_frame_position)
 
         self.assertTrue(cap.set_frame_position(5))
-        self.assertEqual(5, cap.get_current_frame_position())
+        self.assertEqual(5, cap.current_frame_position)
 
         self.assertEqual(15, get_frame_number(cap.next()))
 
-        self.assertEqual(cap.get_frame_count(), cap.get_current_frame_position())
+        self.assertEqual(cap.frame_count, cap.current_frame_position)
 
         # At end of segment so there shouldn't be any frames left to process.
         self.assert_read_fails(cap)
@@ -399,14 +399,14 @@ class FrameFilterTest(unittest.TestCase):
         cap.set_frame_position(2)
 
         self.assertEqual(20, get_frame_number(cap.next()))
-        self.assertEqual(3, cap.get_current_frame_position())
+        self.assertEqual(3, cap.current_frame_position)
 
         init_frames = cap.get_initialization_frames_if_available(2)
         self.assertEqual(2, len(init_frames))
         self.assertEqual(0, get_frame_number(init_frames[0]))
         self.assertEqual(5, get_frame_number(init_frames[1]))
 
-        self.assertEqual(3, cap.get_current_frame_position())
+        self.assertEqual(3, cap.current_frame_position)
         self.assertEqual(25, get_frame_number(cap.next()))
 
 
@@ -425,7 +425,7 @@ class FrameFilterTest(unittest.TestCase):
                            dict(FEED_FORWARD_TYPE='SUPERSET_REGION'), {}, ff_track)
 
         cap = mpf_util.VideoCapture(job)
-        self.assertEqual(7, cap.get_frame_count())
+        self.assertEqual(7, cap.frame_count)
         self.assertFalse(cap.get_initialization_frames_if_available(100))
 
         min_x = ff_track.frame_locations[3].x_left_upper
@@ -433,7 +433,7 @@ class FrameFilterTest(unittest.TestCase):
         min_y = ff_track.frame_locations[3].y_left_upper
         max_y = ff_track.frame_locations[1].y_left_upper + ff_track.frame_locations[1].height
         expected_size = mpf_util.Size(max_x - min_x, max_y - min_y)
-        self.assertEqual(expected_size, cap.get_frame_size())
+        self.assertEqual(expected_size, cap.frame_size)
 
         self.assert_frame_read(cap, 1, expected_size, 0)
         self.assert_frame_read(cap, 3, expected_size, 1.0 / 7)
@@ -443,7 +443,7 @@ class FrameFilterTest(unittest.TestCase):
         self.assert_frame_read(cap, 20, expected_size, 5.0 / 7)
         self.assert_frame_read(cap, 25, expected_size, 6.0 / 7)
 
-        self.assertAlmostEqual(1, cap.get_frame_position_ratio())
+        self.assertAlmostEqual(1, cap.frame_position_ratio)
         self.assert_read_fails(cap)
 
         il = mpf.ImageLocation(0, 1, 2, 3)
@@ -456,7 +456,7 @@ class FrameFilterTest(unittest.TestCase):
 
 
     def assert_frame_read(self, cap, expected_frame_number, expected_size, expected_ratio):
-        self.assertEqual(expected_ratio, cap.get_frame_position_ratio())
+        self.assertEqual(expected_ratio, cap.frame_position_ratio)
 
         frame = cap.next()
         self.assertEqual(expected_frame_number, get_frame_number(frame))
@@ -480,7 +480,7 @@ class FrameFilterTest(unittest.TestCase):
         cap = mpf_util.VideoCapture(job)
 
         expected_size = mpf_util.Size(3, 5)
-        self.assertEqual(expected_size, cap.get_frame_size())
+        self.assertEqual(expected_size, cap.frame_size)
 
         frame = cap.next()
         self.assertEqual(expected_size.width, frame.shape[1])
@@ -515,7 +515,7 @@ class FrameFilterTest(unittest.TestCase):
         cap.set_frame_position(10)
         cap.read()
 
-        frame_position = cap.get_current_frame_position()
+        frame_position = cap.current_frame_position
         self.assertEqual(11, frame_position)
 
 
@@ -540,7 +540,7 @@ class FrameFilterTest(unittest.TestCase):
         # test_cv_video_capture_set_frame_position_issue test case.
         job = mpf.VideoJob('Test', VIDEO_WITH_SET_FRAME_ISSUE, 0, 1000, {}, {}, None)
         cap = mpf_util.VideoCapture(job, False, False)
-        frame_count = cap.get_frame_count()
+        frame_count = cap.frame_count
         cap.set_frame_position(frame_count - 5)
 
         was_read, _ = cap.read()
@@ -644,7 +644,7 @@ class FrameFilterTest(unittest.TestCase):
                            {}, None)
         cap = mpf_util.VideoCapture(job)
 
-        self.assertEqual((37, 46), cap.get_frame_size())
+        self.assertEqual((37, 46), cap.frame_size)
 
         track = create_test_track()
         cap.reverse_transform(track)
@@ -671,19 +671,19 @@ class FrameFilterTest(unittest.TestCase):
         cap = mpf_util.VideoCapture(job)
         output_track = mpf.VideoTrack(0, 2)
 
-        frame_pos = cap.get_current_frame_position()
+        frame_pos = cap.current_frame_position
         frame = cap.next()
         self.assertEqual(4, get_frame_number(frame))
         self.assertEqual((65, 125), mpf_util.Size.from_frame(frame))
         output_track.frame_locations[frame_pos] = mpf.ImageLocation(0, 0, frame.shape[1], frame.shape[0])
 
-        frame_pos = cap.get_current_frame_position()
+        frame_pos = cap.current_frame_position
         frame = cap.next()
         self.assertEqual(15, get_frame_number(frame))
         self.assertEqual((100, 200), mpf_util.Size.from_frame(frame))
         output_track.frame_locations[frame_pos] = mpf.ImageLocation(0, 0, frame.shape[1], frame.shape[0])
 
-        frame_pos = cap.get_current_frame_position()
+        frame_pos = cap.current_frame_position
         frame = cap.next()
         self.assertEqual(29, get_frame_number(frame))
         self.assertEqual((30, 240), mpf_util.Size.from_frame(frame))

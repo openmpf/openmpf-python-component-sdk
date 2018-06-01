@@ -34,11 +34,11 @@ class TestRect(unittest.TestCase):
     def test_rect_info_methods(self):
         test_rect = mpf_util.Rect(2, 3, 4, 5)
 
-        self.assertEqual(20, test_rect.area())
-        self.assertFalse(test_rect.empty())
+        self.assertEqual(20, test_rect.area)
+        self.assertFalse(test_rect.empty)
         self.assertEqual(mpf_util.Point(2, 3), test_rect.tl)
         self.assertEqual(mpf_util.Point(6, 8), test_rect.br)
-        self.assertEqual(mpf_util.Size(4, 5), test_rect.size())
+        self.assertEqual(mpf_util.Size(4, 5), test_rect.size)
 
 
     def test_rect_creation(self):
