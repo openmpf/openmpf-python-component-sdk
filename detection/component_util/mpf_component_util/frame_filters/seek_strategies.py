@@ -28,6 +28,9 @@ import cv2
 import sys
 
 
+# For certain videos cv2.VideoCapture.set(cv2.CAP_PROP_POS_FRAMES, int) # does not work properly.
+# If mpf_component_util.VideoCapture detects that cv2.VideoCapture is not setting the frame position
+# properly it will fallback to different SeekStrategy.
 
 class SetFramePositionSeek(object):
     @staticmethod
@@ -73,7 +76,6 @@ class _SequentialSeek(object):
 
 
 
-
 class GrabSeek(_SequentialSeek):
 
     @staticmethod
@@ -89,13 +91,10 @@ class GrabSeek(_SequentialSeek):
 class ReadSeek(_SequentialSeek):
     @staticmethod
     def _advance(cv_video_cap):
-        was_read, frame = cv_video_cap.read()
+        was_read, _ = cv_video_cap.read()
         return was_read
 
     @staticmethod
     def fallback():
         print >> sys.stderr, 'ReadSeek failed: No more fallback'
         return None
-
-
-

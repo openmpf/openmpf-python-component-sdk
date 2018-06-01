@@ -52,7 +52,6 @@ class _FrameListFilter(frame_filter.FrameFilter):
         return bisect.bisect_left(self.__frames_to_show, original_position)
 
 
-
     def get_segment_frame_count(self):
         return len(self.__frames_to_show)
 
@@ -70,6 +69,7 @@ class _FrameListFilter(frame_filter.FrameFilter):
 class FeedForwardFrameFilter(_FrameListFilter):
     def __init__(self, feed_forward_track):
         super(FeedForwardFrameFilter, self).__init__(sorted(feed_forward_track.frame_locations))
+
 
 
 class KeyFrameFilter(_FrameListFilter):
@@ -127,15 +127,11 @@ class KeyFrameFilter(_FrameListFilter):
         if exit_code == 0:
             return key_frames
 
-        # error_msg = 'Unable to get key frames because the ffprobe process '
         error_msg = 'The ffprobe process '
         if exit_code > 0:
             error_msg += 'exited with exit code: %s.' % exit_code
         else:
+            # When exit code is negative, it is the number of the signal that caused the process exit.
             error_msg += 'exited due to signal number: %s.' % (-1 * exit_code)
             exit_code = 128 - exit_code
         raise EnvironmentError(exit_code, error_msg)
-
-
-
-

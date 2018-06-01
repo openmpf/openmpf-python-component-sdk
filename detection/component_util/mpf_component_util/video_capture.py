@@ -35,10 +35,21 @@ import sys
 
 class VideoCapture(object):
     def __init__(self, video_job, enable_frame_transformers=True, enable_frame_filtering=True):
+        """
+        Initializes a new MPFVideoCapture instance, using the frame transformers specified in job_properties,
+        to be used for video processing jobs.
+        :param video_job:
+        :param enable_frame_transformers: Automatically transform frames based on job properties
+        :param enable_frame_filtering: Automatically skip frames based on job properties
+        """
         self.__cv_video_capture = cv2.VideoCapture(video_job.data_uri)
         self.__frame_filter = self.__get_frame_filter(enable_frame_filtering, video_job, self.__cv_video_capture)
         self.__frame_transformer = self.__get_frame_transformer(enable_frame_transformers, video_job)
         self.__seek_strategy = frame_filters.SetFramePositionSeek()
+
+        # VideoCapture keeps track of the frame position instead of depending on
+        # cv2.VideoCapture.get(cv2.CAP_PROP_POS_FRAMES) because for certain videos
+        # it does not correctly report the frame position.
         self.__frame_position = 0
 
         self.set_frame_position(0)
@@ -180,6 +191,14 @@ class VideoCapture(object):
 
 
     def get_initialization_frames_if_available(self, num_requested_frames):
+        """
+        Gets up to num_requested_frames frames before beginning of segment, skipping frame_interval frames.
+        If less than num_requested_frames are available, returned list will have as many initialization frames
+        as are available.
+        If the job's start frame is less than the frame interval, the returned vector will be empty.
+        :param num_requested_frames:
+        :return: list that contains between 0 and num_requested_frames frames
+        """
         num_init_frames_available = self.__frame_filter.get_available_initialization_frame_count()
         num_frames_to_get = min(num_init_frames_available, num_requested_frames)
         if num_frames_to_get < 0:
@@ -258,6 +277,14 @@ class VideoCapture(object):
 
 
     def __update_original_frame_position(self, requested_original_position):
+        """
+        Attempts to update the frame position using self.__seek_strategy. If the current self.__seek_strategy fails,
+        it will attempt to fall back to the next SeekStrategy until it tries all the strategies.
+        If this method fails that means it will have attempted to use frame_filters.ReadSeek.
+        If frame_filters.ReadSeek fails, then it is not possible to read the video any further.
+        :param requested_original_position:
+        :return: true if the frame position was successfully set to requested_original_position
+        """
         if self.__frame_position == requested_original_position:
             return True
         if self.__seek_strategy is None:
@@ -311,12 +338,14 @@ class VideoCapture(object):
         return int(cv_video_capture.get(cv2.CAP_PROP_FRAME_COUNT))
 
 
+
 def video_capture_wrapper(video_job, get_detections_fn):
     video_capture = VideoCapture(video_job)
     results = get_detections_fn(video_job, video_capture)
     for result in results:
         video_capture.reverse_transform(result)
         yield result
+
 
 
 class VideoCaptureMixin(object):

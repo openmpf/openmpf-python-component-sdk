@@ -109,4 +109,3 @@ def _get_search_region(job_properties, input_frame_size):
 
 
     return utils.Rect.from_corners(utils.Point(region_x, region_y), utils.Point(region_br_x, region_br_y))
-

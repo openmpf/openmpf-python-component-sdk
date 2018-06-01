@@ -83,4 +83,3 @@ class FeedForwardFrameCropper(_BaseFrameCropper):
                 'Attempted to get feed forward region of interest for frame: %s, '
                 'but there are only %s entries in the feed forward track.'
                 % (frame_index, len(self.__fed_forward_detections)))
-
