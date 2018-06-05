@@ -36,7 +36,7 @@ def images_equal(im1, im2):
     return (im1 == im2).all()
 
 
-# Black regions middle: Rect(80, 50, 160, 100) and  bottom right: Rect(300, 170, 20, 30)
+# test_img.png contains two black regions, middle: Rect(80, 50, 160, 100) and  bottom right: Rect(300, 170, 20, 30)
 
 
 class TestImageReader(unittest.TestCase):

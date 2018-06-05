@@ -58,6 +58,7 @@ class TestRect(unittest.TestCase):
         rect2 = mpf_util.Rect(2, 2, 4, 3)
         union = rect1.union(rect2)
         self.assertEqual(union, rect2.union(rect1))
+        # rect1 encloses rect2
         self.assertEqual(rect1, union)
 
         rect1 = mpf_util.Rect(2, 6, 5, 10)
@@ -72,6 +73,18 @@ class TestRect(unittest.TestCase):
         self.assertEqual(union, mpf_util.Rect(*rect2_args).union(rect1))
         self.assertEqual((1, 3, 14, 7), union)
 
+        rect1 = mpf_util.Rect(0, 0, 5, 5)
+        rect2 = mpf_util.Rect(8, 8, 4, 4)
+        union = rect1.union(rect2)
+        self.assertEqual(union, rect2.union(rect1))
+        self.assertEqual((0, 0, 12, 12), union)
+
+        rect1 = mpf_util.Rect(0, 0, 5, 5)
+        rect2 = mpf_util.Rect(0, 0, 5, 5)
+        union = rect1.union(rect2)
+        self.assertEqual(union, rect2.union(rect1))
+        self.assertEqual(union, rect1)
+
 
 
     def test_rect_intersection(self):
@@ -79,6 +92,7 @@ class TestRect(unittest.TestCase):
         rect2 = mpf_util.Rect(2, 2, 4, 3)
         intersection = rect1.intersection(rect2)
         self.assertEqual(intersection, rect2.intersection(rect1))
+        # rect1 encloses rect2
         self.assertEqual(rect2, intersection)
 
         rect1 = mpf_util.Rect(2, 6, 5, 10)
@@ -92,4 +106,16 @@ class TestRect(unittest.TestCase):
         intersection = rect1.intersection(rect2_args)
         self.assertEqual(intersection, mpf_util.Rect.from_corner_and_size(*rect2_args).intersection(rect1))
         self.assertEqual((6, 5, 3, 2), intersection)
+
+        rect1 = mpf_util.Rect(0, 0, 5, 5)
+        rect2 = mpf_util.Rect(8, 8, 4, 4)
+        intersection = rect1.intersection(rect2)
+        self.assertEqual(intersection, rect2.intersection(rect1))
+        self.assertEqual((0, 0, 0, 0), intersection)
+
+        rect1 = mpf_util.Rect(0, 0, 5, 5)
+        rect2 = mpf_util.Rect(0, 0, 5, 5)
+        intersection = rect1.intersection(rect2)
+        self.assertEqual(intersection, rect2.intersection(rect1))
+        self.assertEqual(intersection, rect1)
 

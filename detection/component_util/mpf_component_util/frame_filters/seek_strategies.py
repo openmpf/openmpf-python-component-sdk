@@ -96,5 +96,5 @@ class ReadSeek(_SequentialSeek):
 
     @staticmethod
     def fallback():
-        print >> sys.stderr, 'ReadSeek failed: No more fallback'
+        print >> sys.stderr, 'ReadSeek failed: No more fallbacks'
         return None

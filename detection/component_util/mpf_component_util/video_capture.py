@@ -36,7 +36,7 @@ import sys
 class VideoCapture(object):
     def __init__(self, video_job, enable_frame_transformers=True, enable_frame_filtering=True):
         """
-        Initializes a new MPFVideoCapture instance, using the frame transformers specified in job_properties,
+        Initializes a new VideoCapture instance, using the frame transformers specified in job_properties,
         to be used for video processing jobs.
         :param video_job:
         :param enable_frame_transformers: Automatically transform frames based on job properties

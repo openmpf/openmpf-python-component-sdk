@@ -26,6 +26,7 @@
 
 import collections
 import operator
+import sys
 
 
 def get_property(properties, key, default_value, prop_type=None):
@@ -41,7 +42,9 @@ def get_property(properties, key, default_value, prop_type=None):
 
     try:
         return prop_type(value)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError) as err:
+        print >> sys.stderr, ('Failed to convert the "%s" key with value "%s" to %s due to: %s'
+                              % (key, value, prop_type, err))
         return default_value
 
 
@@ -73,7 +76,7 @@ class Size(collections.namedtuple('Size', ('width', 'height'))):
 def element_wise_op(op, obj1, obj2, target_type=None):
     if target_type is None:
         target_type = type(obj1)
-    return target_type(*(op(x, y) for x, y in zip(obj1, obj2)))
+    return target_type(*(op(v1, v2) for v1, v2 in zip(obj1, obj2)))
 
 
 class Rect(collections.namedtuple('Rect', ('x', 'y', 'width', 'height'))):

@@ -87,7 +87,7 @@ class KeyFrameFilter(_FrameListFilter):
             proc = subprocess.Popen(command, stdout=subprocess.PIPE)
         except OSError as err:
             if err.errno == 2:
-                raise EnvironmentError(err.errno, command[0] + ' does not appear to be installed')
+                raise EnvironmentError(err.errno, 'ffprobe does not appear to be installed')
             else:
                 raise
 
