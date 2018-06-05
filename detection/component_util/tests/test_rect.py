@@ -73,6 +73,7 @@ class TestRect(unittest.TestCase):
         self.assertEqual(union, mpf_util.Rect(*rect2_args).union(rect1))
         self.assertEqual((1, 3, 14, 7), union)
 
+        # Rects with no overlap
         rect1 = mpf_util.Rect(0, 0, 5, 5)
         rect2 = mpf_util.Rect(8, 8, 4, 4)
         union = rect1.union(rect2)
@@ -107,6 +108,7 @@ class TestRect(unittest.TestCase):
         self.assertEqual(intersection, mpf_util.Rect.from_corner_and_size(*rect2_args).intersection(rect1))
         self.assertEqual((6, 5, 3, 2), intersection)
 
+        # Rects with no overlap
         rect1 = mpf_util.Rect(0, 0, 5, 5)
         rect2 = mpf_util.Rect(8, 8, 4, 4)
         intersection = rect1.intersection(rect2)
