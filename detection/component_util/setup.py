@@ -25,17 +25,16 @@
 #############################################################################
 
 
+import os
 import setuptools
 
+os.chdir(os.path.dirname(__file__))
+
 setuptools.setup(
-    name='PythonOcvComponent',
+    name='mpf_component_util',
+    description='OpenMPF Python Component Utilities',
     version='0.1',
-    packages=setuptools.find_packages(),
-    install_requires=(
-        'mpf_component_api>=0.1',
-        'mpf_component_util>=0.1'
-    ),
-    entry_points={
-        'mpf.exported_component': 'component = ocv_component.ocv_component:OcvComponent'
-    }
+    packages=setuptools.find_packages(exclude=('*test*',)),
+    install_requires=('opencv-python>=3.3',),
+    test_suite='tests',
 )

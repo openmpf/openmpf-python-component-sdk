@@ -24,18 +24,26 @@
 # limitations under the License.                                            #
 #############################################################################
 
+import os
+import sys
 
-import setuptools
 
-setuptools.setup(
-    name='PythonOcvComponent',
-    version='0.1',
-    packages=setuptools.find_packages(),
-    install_requires=(
-        'mpf_component_api>=0.1',
-        'mpf_component_util>=0.1'
-    ),
-    entry_points={
-        'mpf.exported_component': 'component = ocv_component.ocv_component:OcvComponent'
-    }
-)
+def add_local_component_libs_to_sys_path():
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../'))
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../api'))
+
+
+def get_data_file_path(filename):
+    return os.path.join(os.path.dirname(__file__), 'test_data', filename)
+
+
+def is_all_same_color(image, color_tuple):
+    return (image == color_tuple).all()
+
+
+def is_all_black(image):
+    return is_all_same_color(image, (0, 0, 0))
+
+
+def is_all_white(image):
+    return is_all_same_color(image, (255, 255, 255))

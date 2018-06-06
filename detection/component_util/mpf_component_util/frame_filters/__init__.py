@@ -24,18 +24,10 @@
 # limitations under the License.                                            #
 #############################################################################
 
+from .interval_frame_filter import IntervalFrameFilter
+from .frame_list_filters import FeedForwardFrameFilter, KeyFrameFilter
+from .seek_strategies import SetFramePositionSeek
 
-import setuptools
 
-setuptools.setup(
-    name='PythonOcvComponent',
-    version='0.1',
-    packages=setuptools.find_packages(),
-    install_requires=(
-        'mpf_component_api>=0.1',
-        'mpf_component_util>=0.1'
-    ),
-    entry_points={
-        'mpf.exported_component': 'component = ocv_component.ocv_component:OcvComponent'
-    }
-)
+def get_no_op_filter(frame_count):
+    return IntervalFrameFilter(0, frame_count - 1, 1)

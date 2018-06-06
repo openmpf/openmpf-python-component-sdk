@@ -54,7 +54,10 @@ class FieldTypes(object):
             # Add the new property to the decorated class
             setattr(clazz, field, prop)
 
-        FieldTypes.add_to_string_method(clazz, self.types_dict)
+        ctor_args = [a for a in inspect.getargspec(clazz.__init__).args if a in self.types_dict]
+
+        FieldTypes.add_equals_methods(clazz, ctor_args)
+        FieldTypes.add_to_string_method(clazz, ctor_args)
         return clazz
 
 
@@ -73,15 +76,11 @@ class FieldTypes(object):
         return property(getter, setter)
 
     @staticmethod
-    def add_to_string_method(clazz, prop_types):
+    def add_to_string_method(clazz, ctor_args):
         str_is_overridden = hasattr(clazz, '__repr__') and clazz.__repr__ != object.__repr__
-        if str_is_overridden:
-            return
+        if not str_is_overridden:
+            clazz.__repr__ = FieldTypes.create_string_fn(ctor_args)
 
-        ctor_arg_list = inspect.getargspec(clazz.__init__).args
-        print_order = [a for a in ctor_arg_list if a in prop_types]
-
-        setattr(clazz, '__repr__', FieldTypes.create_string_fn(print_order))
 
     @staticmethod
     def create_string_fn(fields):
@@ -89,6 +88,14 @@ class FieldTypes(object):
             fields_string = ', '.join('%s = %s' % (f, getattr(instance, f)) for f in fields)
             return '%s { %s }' % (type(instance).__name__, fields_string)
         return to_string
+
+
+    @staticmethod
+    def add_equals_methods(clazz, ctor_args):
+        if '__eq__' not in clazz.__dict__:
+            clazz.__eq__ = lambda s, o: all(getattr(s, f) == getattr(o, f) for f in ctor_args)
+            clazz.__ne__ = lambda s, o: not s.__eq__(o)
+            clazz.__hash__ = None
 
 
 class TypedDict(collections.MutableMapping):
