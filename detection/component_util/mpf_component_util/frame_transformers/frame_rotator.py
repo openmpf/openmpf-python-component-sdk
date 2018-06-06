@@ -34,8 +34,8 @@ class FrameRotator(frame_transformer.BaseDecoratedFrameTransformer):
     def __init__(self, inner_transform, rotation_degrees):
         super(FrameRotator, self).__init__(inner_transform)
         self.__rotation_degrees = rotation_degrees
-        if rotation_degrees not in (0, 90, 180, 270):
-            raise ValueError('Rotation degrees must be 0, 90, 180, or 270.')
+        if rotation_degrees not in (90, 180, 270):
+            raise ValueError('Rotation degrees must be 90, 180, or 270.')
 
 
     def _do_frame_transform(self, frame, frame_index):

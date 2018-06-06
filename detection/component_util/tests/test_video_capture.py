@@ -707,11 +707,13 @@ class FrameFilterTest(unittest.TestCase):
 class TestVideoCaptureMixin(unittest.TestCase):
     def test_video_capture_mixin(self):
         job_properties = {
-            'HORIZONTAL_FLIP': 'True', 'ROTATION': '270',
+            'ROTATION': '270', 'HORIZONTAL_FLIP': 'True',
             'SEARCH_REGION_ENABLE_DETECTION': 'true',
             'SEARCH_REGION_BOTTOM_RIGHT_X_DETECTION': '80',
             'SEARCH_REGION_BOTTOM_RIGHT_Y_DETECTION': '100'
         }
+
+        # Image is treated like a single frame video.
         job = mpf.VideoJob('Test', test_util.get_data_file_path('test_img.png'), 0, 0, job_properties,
                            dict(FRAME_COUNT='1'), None)
 
@@ -799,4 +801,6 @@ def create_test_track():
 
 
 def get_frame_number(frame):
+    # In frame_filter_test.mp4 value of each color channel value is equal to that frame's frame number.
+    # For example the color of frame 0 is rgb(0, 0, 0) and frame 1 is rgb(1, 1, 1).
     return frame[0, 0, 0]

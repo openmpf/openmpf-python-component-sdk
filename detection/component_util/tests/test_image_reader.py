@@ -135,7 +135,7 @@ class TestImageReader(unittest.TestCase):
 
     def test_combined(self):
         job_properties = {
-            'HORIZONTAL_FLIP': 'True', 'ROTATION': '270',
+            'ROTATION': '270', 'HORIZONTAL_FLIP': 'True',
             'SEARCH_REGION_ENABLE_DETECTION': 'true',
             'SEARCH_REGION_BOTTOM_RIGHT_X_DETECTION': '80',
             'SEARCH_REGION_BOTTOM_RIGHT_Y_DETECTION': '100'

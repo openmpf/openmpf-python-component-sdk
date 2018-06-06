@@ -209,7 +209,7 @@ class VideoCapture(object):
         """
         num_init_frames_available = self.__frame_filter.get_available_initialization_frame_count()
         num_frames_to_get = min(num_init_frames_available, num_requested_frames)
-        if num_frames_to_get < 0:
+        if num_frames_to_get < 1:
             return ()
 
         initial_frame_pos = self.__frame_position
