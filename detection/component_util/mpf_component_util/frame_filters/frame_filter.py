@@ -36,6 +36,7 @@ class FrameFilter(object):
     def segment_to_original_frame_position(self, segment_position):
         """
         Map a frame position within the segment to a frame position in the original video.
+
         :param segment_position: A frame position within the segment
         :return: The matching frame position in the original video.
         """
@@ -46,6 +47,7 @@ class FrameFilter(object):
     def original_to_segment_frame_position(self, original_position):
         """
         Map a frame position in the original video, to a position in the segment
+
         :param original_position: A frame position in the original video
         :return: The matching frame position in the segment
         """
@@ -56,6 +58,7 @@ class FrameFilter(object):
     def get_available_initialization_frame_count(self):
         """
         Returns the number of frames before the beginning of the segment. Skipped frames are not counted.
+
         :return: Number of available initialization frames
         """
         raise NotImplementedError()
@@ -74,6 +77,7 @@ class FrameFilter(object):
         """
         Gets the amount of time from the segment start to the segment end. The frame rate is adjusted so that
         the time from the start frame to the stop frame is the same as the original video.
+
         :param original_frame_rate: Frame rate of original video
         :return: The duration of the segment in seconds
         """
@@ -90,6 +94,7 @@ class FrameFilter(object):
         """
         Gets the frame rate of the segment. The frame rate is calculated so that the duration between the start
         frame and stop frame is the same as the original video.
+
         :param original_frame_rate: Frame rate of original video
         :return: Frames per second of the video segment
         """
@@ -99,6 +104,7 @@ class FrameFilter(object):
     def get_current_segment_time_in_millis(self, original_position, original_frame_rate):
         """
         Gets the time in milliseconds between the segment start frame and the current position.
+
         :param original_position: Frame position in original video
         :param original_frame_rate: Frame rate of original video
         :return: Time in milliseconds since the segment started
@@ -112,6 +118,7 @@ class FrameFilter(object):
     def millis_to_segment_frame_position(self, original_frame_rate, segment_milliseconds):
         """
         Gets the segment position that is the specified number of milliseconds since the start of the segment
+
         :param original_frame_rate: Frame position in original video
         :param segment_milliseconds: Time since start of segment in milliseconds
         :return: Segment frame position for the specified number of milliseconds
@@ -124,6 +131,7 @@ class FrameFilter(object):
         """
         Returns a number between 0 (start of video) and 1 (end of video) that indicates the current position
         in the video
+
         :param original_position: Frame position in original video
         :return: Number between 0 and 1 indicating current position in video
         """
@@ -134,6 +142,7 @@ class FrameFilter(object):
     def ratio_to_original_frame_position(self, ratio):
         """
         Returns the position in the original video for the given ratio
+
         :param ratio: Number between 0 and 1 that indicates position in video
         :return: Position in the original video
         """
