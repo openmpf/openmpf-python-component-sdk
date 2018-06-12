@@ -24,7 +24,7 @@
 # limitations under the License.                                            #
 #############################################################################
 
-from __future__ import division
+from __future__ import division, print_function
 
 from . import frame_filter
 from .. import utils
@@ -104,9 +104,8 @@ class KeyFrameFilter(_FrameListFilter):
             # Expected line format for key frame: frame.209.key_frame=1
             # Expected line format for non-key frame: frame.210.key_frame=0
             if not line.startswith(KeyFrameFilter.LINE_PREFIX):
-                print >> sys.stderr, ('Expected each line of output from ffprobe to start with "%s", '
-                                      'but the following line was found "%s"'
-                                      % (KeyFrameFilter.LINE_PREFIX, line))
+                print('Expected each line of output from ffprobe to start with "%s"' 
+                      'but the following line was found "%s"' % (KeyFrameFilter.LINE_PREFIX, line), file=sys.stderr)
                 continue
 
             line_parts = line.split('.')

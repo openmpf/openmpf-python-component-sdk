@@ -24,6 +24,8 @@
 # limitations under the License.                                            #
 #############################################################################
 
+from __future__ import print_function
+
 from . import frame_filters
 from . import frame_transformers
 from . import utils
@@ -322,20 +324,20 @@ class VideoCapture(object):
             first_track_frame = min(video_job.feed_forward_track.frame_locations)
             last_track_frame = max(video_job.feed_forward_track.frame_locations)
             if first_track_frame != video_job.start_frame or last_track_frame != video_job.stop_frame:
-                print >> sys.stderr, (
-                    'The feed forward track for Job: %s starts at frame %s and ends at frame %s, '
-                    'but the job\'s start frame is %s and its stop frame is %s. '
-                    'The job had a feed forward track so the entire feed forward track will be used.'
-                    % (video_job.job_name, first_track_frame, last_track_frame, video_job.start_frame,
-                       video_job.stop_frame))
+                print('The feed forward track for Job: %s starts at frame %s and ends at frame %s, '
+                      'but the job\'s start frame is %s and its stop frame is %s. '
+                      'The job had a feed forward track so the entire feed forward track will be used.'
+                      % (video_job.job_name, first_track_frame, last_track_frame, video_job.start_frame,
+                         video_job.stop_frame),
+                      file=sys.stderr)
             return frame_filters.FeedForwardFrameFilter(video_job.feed_forward_track)
 
         if utils.get_property(video_job.job_properties, 'USE_KEY_FRAMES', False):
             try:
                 return frame_filters.KeyFrameFilter(video_job)
             except EnvironmentError as err:
-                print >> sys.stderr, 'Unable to get key frames due to:', err
-                print >> sys.stderr, 'Falling back to IntervalFrameFilter'
+                print('Unable to get key frames due to:', err, file=sys.stderr)
+                print('Falling back to IntervalFrameFilter', file=sys.stderr)
 
 
         return frame_filters.IntervalFrameFilter.from_job(video_job, frame_count)

@@ -26,13 +26,15 @@
 # limitations under the License.                                            #
 #############################################################################
 
+from __future__ import print_function
+
 import os
 import sys
 import unittest
 
 if __name__ == '__main__':
-    print >> sys.stderr, 'Running unit tests for Python component utilities ...'
-    print >> sys.stderr, '----------------------------------------------------------------------'
+    print('Running unit tests for Python component utilities ...', file=sys.stderr)
+    print('----------------------------------------------------------------------', file=sys.stderr)
 
     test_argv = list(sys.argv)
     if len(test_argv) == 1:
