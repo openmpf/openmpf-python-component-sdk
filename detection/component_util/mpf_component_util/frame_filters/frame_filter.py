@@ -24,6 +24,8 @@
 # limitations under the License.                                            #
 #############################################################################
 
+from __future__ import division
+
 import abc
 
 
@@ -91,7 +93,7 @@ class FrameFilter(object):
         :param original_frame_rate: Frame rate of original video
         :return: Frames per second of the video segment
         """
-        return self.get_segment_frame_count() / float(self.get_segment_duration(original_frame_rate))
+        return self.get_segment_frame_count() / self.get_segment_duration(original_frame_rate)
 
 
     def get_current_segment_time_in_millis(self, original_position, original_frame_rate):
@@ -103,7 +105,7 @@ class FrameFilter(object):
         """
         segment_pos = self.original_to_segment_frame_position(original_position)
         frames_per_second = self.get_segment_frame_rate(original_frame_rate)
-        time_in_seconds = segment_pos / float(frames_per_second)
+        time_in_seconds = segment_pos / frames_per_second
         return time_in_seconds * 1000
 
 
@@ -114,8 +116,8 @@ class FrameFilter(object):
         :param segment_milliseconds: Time since start of segment in milliseconds
         :return: Segment frame position for the specified number of milliseconds
         """
-        segment_fps = float(self.get_segment_frame_rate(original_frame_rate))
-        return int(segment_fps * segment_milliseconds / 1000)
+        segment_fps = self.get_segment_frame_rate(original_frame_rate)
+        return segment_fps * segment_milliseconds // 1000
 
 
     def get_segment_frame_position_ratio(self, original_position):
@@ -125,7 +127,7 @@ class FrameFilter(object):
         :param original_position: Frame position in original video
         :return: Number between 0 and 1 indicating current position in video
         """
-        segment_position = float(self.original_to_segment_frame_position(original_position))
+        segment_position = self.original_to_segment_frame_position(original_position)
         return segment_position / self.get_segment_frame_count()
 
 

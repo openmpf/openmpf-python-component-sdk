@@ -24,6 +24,8 @@
 # limitations under the License.                                            #
 #############################################################################
 
+from __future__ import division
+
 from . import frame_filter
 from .. import utils
 
@@ -74,12 +76,12 @@ class IntervalFrameFilter(frame_filter.FrameFilter):
 
 
     def original_to_segment_frame_position(self, original_position):
-        return int((original_position - self.__start_frame) / self.__frame_interval)
+        return (original_position - self.__start_frame) // self.__frame_interval
 
 
     def get_segment_frame_count(self):
         frame_range = self.__stop_frame - self.__start_frame + 1
-        full_segments = frame_range / self.__frame_interval
+        full_segments = frame_range // self.__frame_interval
         has_remainder = frame_range % self.__frame_interval != 0
         if has_remainder:
             return full_segments + 1
@@ -89,8 +91,8 @@ class IntervalFrameFilter(frame_filter.FrameFilter):
 
     def get_segment_duration(self, original_frame_rate):
         frame_range = self.__stop_frame - self.__start_frame + 1
-        return frame_range / float(original_frame_rate)
+        return frame_range / original_frame_rate
 
 
     def get_available_initialization_frame_count(self):
-        return self.__start_frame / self.__frame_interval
+        return self.__start_frame // self.__frame_interval

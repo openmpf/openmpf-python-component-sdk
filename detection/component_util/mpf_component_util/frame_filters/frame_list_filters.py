@@ -24,6 +24,8 @@
 # limitations under the License.                                            #
 #############################################################################
 
+from __future__ import division
+
 from . import frame_filter
 from .. import utils
 
@@ -58,7 +60,7 @@ class _FrameListFilter(frame_filter.FrameFilter):
 
     def get_segment_duration(self, original_frame_rate):
         frame_range = self.__frames_to_show[-1] - self.__frames_to_show[0] + 1
-        return frame_range / float(original_frame_rate)
+        return frame_range / original_frame_rate
 
 
     def get_available_initialization_frame_count(self):

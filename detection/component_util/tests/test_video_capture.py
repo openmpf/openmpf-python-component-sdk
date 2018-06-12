@@ -24,6 +24,8 @@
 # limitations under the License.                                            #
 #############################################################################
 
+from __future__ import division
+
 import test_util
 test_util.add_local_component_libs_to_sys_path()
 
@@ -100,12 +102,12 @@ class FrameFilterTest(unittest.TestCase):
 
     def test_get_segment_duration(self):
         self.assert_segment_duration((0, 9, 100), 10, 1, 0.1)
-        self.assert_segment_duration((0, 9, 100), 30, 1.0 / 3, 1.0 / 30)
+        self.assert_segment_duration((0, 9, 100), 30, 1 / 3, 1 / 30)
         self.assert_segment_duration((0, 199, 100), 10, 20, 10.1)
         self.assert_segment_duration((0, 149, 100), 10, 15, 10.1)
 
         self.assert_segment_duration((7, 16, 100), 10, 1, 0.1)
-        self.assert_segment_duration((7, 16, 100), 30, 1.0 / 3, 1.0 / 30)
+        self.assert_segment_duration((7, 16, 100), 30, 1 / 3, 1 / 30)
         self.assert_segment_duration((7, 206, 100), 10, 20, 10.1)
         self.assert_segment_duration((7, 156, 100), 10, 15, 10.1)
 
@@ -123,11 +125,11 @@ class FrameFilterTest(unittest.TestCase):
         self.assert_segment_frame_rate((0, 9, 1), 30, 30)
         self.assert_segment_frame_rate((100, 9000, 1), 30, 30)
 
-        self.assert_segment_frame_rate((0, 9, 2), 15, 50.0 / 3)
-        self.assert_segment_frame_rate((0, 10, 2), 180.0 / 11, 180.0 / 11)
-        self.assert_segment_frame_rate((1, 12, 2), 15, 180.0 / 11)
+        self.assert_segment_frame_rate((0, 9, 2), 15, 50 / 3)
+        self.assert_segment_frame_rate((0, 10, 2), 180 / 11, 180 / 11)
+        self.assert_segment_frame_rate((1, 12, 2), 15, 180 / 11)
 
-        self.assert_segment_frame_rate((0, 8, 3), 10, 90.0 / 7)
+        self.assert_segment_frame_rate((0, 8, 3), 10, 90 / 7)
         self.assert_segment_frame_rate((0, 9, 3), 12, 12)
 
 
@@ -143,22 +145,22 @@ class FrameFilterTest(unittest.TestCase):
         self.assert_current_segment_time((0, 9, 2), 0, 0, 0)
         self.assert_current_segment_time((1, 10, 2), 1, 0, 0)
 
-        self.assert_current_segment_time((0, 9, 1), 1, 100.0 / 3, 100.0 / 3)
-        self.assert_current_segment_time((1, 10, 1), 2, 100.0 / 3, 100.0 / 3)
+        self.assert_current_segment_time((0, 9, 1), 1, 100 / 3, 100 / 3)
+        self.assert_current_segment_time((1, 10, 1), 2, 100 / 3, 100 / 3)
 
-        self.assert_current_segment_time((0, 9, 1), 2, 200.0 / 3, 200.0 / 3)
-        self.assert_current_segment_time((0, 9, 2), 2, 200.0 / 3, 60)
-        self.assert_current_segment_time((1, 10, 2), 3, 200.0 / 3, 60)
+        self.assert_current_segment_time((0, 9, 1), 2, 200 / 3, 200 / 3)
+        self.assert_current_segment_time((0, 9, 2), 2, 200 / 3, 60)
+        self.assert_current_segment_time((1, 10, 2), 3, 200 / 3, 60)
 
-        self.assert_current_segment_time((0, 9, 1), 8, 800.0 / 3, 800.0 / 3)
-        self.assert_current_segment_time((0, 9, 2), 8, 800.0 / 3, 240)
-        self.assert_current_segment_time((1, 10, 2), 9, 800.0 / 3, 240)
+        self.assert_current_segment_time((0, 9, 1), 8, 800 / 3, 800 / 3)
+        self.assert_current_segment_time((0, 9, 2), 8, 800 / 3, 240)
+        self.assert_current_segment_time((1, 10, 2), 9, 800 / 3, 240)
 
         self.assert_current_segment_time((0, 9, 1), 9, 300, 300)
         self.assert_current_segment_time((1, 10, 1), 10, 300, 300)
 
-        self.assert_current_segment_time((2, 12, 1), 6, 400.0 / 3, 400.0 / 3)
-        self.assert_current_segment_time((2, 12, 2), 6, 1100.0 / 9, 1100.0 / 9)
+        self.assert_current_segment_time((2, 12, 1), 6, 400 / 3, 400 / 3)
+        self.assert_current_segment_time((2, 12, 2), 6, 1100 / 9, 1100 / 9)
 
 
     def assert_current_segment_time(self, filter_args, original_position,
@@ -187,8 +189,8 @@ class FrameFilterTest(unittest.TestCase):
         self.assert_segment_frame_position_ratio((10, 29, 2), 30, 1)
 
         self.assert_segment_frame_position_ratio((1, 11, 2), 1, 0)
-        self.assert_segment_frame_position_ratio((1, 11, 2), 3, 1.0 / 6)
-        self.assert_segment_frame_position_ratio((1, 11, 2), 5, 1.0 / 3)
+        self.assert_segment_frame_position_ratio((1, 11, 2), 3, 1 / 6)
+        self.assert_segment_frame_position_ratio((1, 11, 2), 5, 1 / 3)
 
 
     def assert_segment_frame_position_ratio(self, filter_args, original_position, expected_ratio):
@@ -205,8 +207,8 @@ class FrameFilterTest(unittest.TestCase):
         self.assert_ratio_to_original_frame_position((0, 4, 1), 0.5, 2)
         self.assert_ratio_to_original_frame_position((0, 5, 1), 0.5, 3)
 
-        self.assert_ratio_to_original_frame_position((0, 4, 1), 1.0 / 3, 1)
-        self.assert_ratio_to_original_frame_position((0, 5, 1), 1.0 / 3, 2)
+        self.assert_ratio_to_original_frame_position((0, 4, 1), 1 / 3, 1)
+        self.assert_ratio_to_original_frame_position((0, 5, 1), 1 / 3, 2)
 
         self.assert_ratio_to_original_frame_position((3, 14, 2), 0.5, 9)
         self.assert_ratio_to_original_frame_position((3, 15, 2), 0.5, 9)
@@ -436,12 +438,12 @@ class FrameFilterTest(unittest.TestCase):
         self.assertEqual(expected_size, cap.frame_size)
 
         self.assert_frame_read(cap, 1, expected_size, 0)
-        self.assert_frame_read(cap, 3, expected_size, 1.0 / 7)
-        self.assert_frame_read(cap, 7, expected_size, 2.0 / 7)
-        self.assert_frame_read(cap, 11, expected_size, 3.0 / 7)
-        self.assert_frame_read(cap, 12, expected_size, 4.0 / 7)
-        self.assert_frame_read(cap, 20, expected_size, 5.0 / 7)
-        self.assert_frame_read(cap, 25, expected_size, 6.0 / 7)
+        self.assert_frame_read(cap, 3, expected_size, 1 / 7)
+        self.assert_frame_read(cap, 7, expected_size, 2 / 7)
+        self.assert_frame_read(cap, 11, expected_size, 3 / 7)
+        self.assert_frame_read(cap, 12, expected_size, 4 / 7)
+        self.assert_frame_read(cap, 20, expected_size, 5 / 7)
+        self.assert_frame_read(cap, 25, expected_size, 6 / 7)
 
         self.assertAlmostEqual(1, cap.frame_position_ratio)
         self.assert_read_fails(cap)
