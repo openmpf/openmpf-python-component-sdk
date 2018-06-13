@@ -266,7 +266,7 @@ class FrameFilterTest(unittest.TestCase):
 
 
     def assert_read_fails(self, cap):
-        self.assertRaises(StopIteration, cap.next)
+        self.assertRaises(StopIteration, next, cap)
 
 
     def assert_expected_frames_shown(self, cap_or_cap_args, expected_frames):
@@ -339,7 +339,7 @@ class FrameFilterTest(unittest.TestCase):
         self.assertTrue(cap.set_frame_position(5))
         self.assertEqual(5, cap.current_frame_position)
 
-        self.assertEqual(15, get_frame_number(cap.next()))
+        self.assertEqual(15, get_frame_number(next(cap)))
 
         self.assertEqual(cap.frame_count, cap.current_frame_position)
 
@@ -400,7 +400,7 @@ class FrameFilterTest(unittest.TestCase):
         cap = create_video_capture(10, 29, 5)
         cap.set_frame_position(2)
 
-        self.assertEqual(20, get_frame_number(cap.next()))
+        self.assertEqual(20, get_frame_number(next(cap)))
         self.assertEqual(3, cap.current_frame_position)
 
         init_frames = cap.get_initialization_frames_if_available(2)
@@ -409,7 +409,7 @@ class FrameFilterTest(unittest.TestCase):
         self.assertEqual(5, get_frame_number(init_frames[1]))
 
         self.assertEqual(3, cap.current_frame_position)
-        self.assertEqual(25, get_frame_number(cap.next()))
+        self.assertEqual(25, get_frame_number(next(cap)))
 
 
     def test_can_handle_feed_forward_track(self):
@@ -460,7 +460,7 @@ class FrameFilterTest(unittest.TestCase):
     def assert_frame_read(self, cap, expected_frame_number, expected_size, expected_ratio):
         self.assertEqual(expected_ratio, cap.frame_position_ratio)
 
-        frame = cap.next()
+        frame = next(cap)
         self.assertEqual(expected_frame_number, get_frame_number(frame))
 
         height, width, _ = frame.shape
@@ -484,7 +484,7 @@ class FrameFilterTest(unittest.TestCase):
         expected_size = mpf_util.Size(3, 5)
         self.assertEqual(expected_size, cap.frame_size)
 
-        frame = cap.next()
+        frame = next(cap)
         self.assertEqual(expected_size.width, frame.shape[1])
         self.assertEqual(expected_size.height, frame.shape[0])
 
@@ -674,19 +674,19 @@ class FrameFilterTest(unittest.TestCase):
         output_track = mpf.VideoTrack(0, 2)
 
         frame_pos = cap.current_frame_position
-        frame = cap.next()
+        frame = next(cap)
         self.assertEqual(4, get_frame_number(frame))
         self.assertEqual((65, 125), mpf_util.Size.from_frame(frame))
         output_track.frame_locations[frame_pos] = mpf.ImageLocation(0, 0, frame.shape[1], frame.shape[0])
 
         frame_pos = cap.current_frame_position
-        frame = cap.next()
+        frame = next(cap)
         self.assertEqual(15, get_frame_number(frame))
         self.assertEqual((100, 200), mpf_util.Size.from_frame(frame))
         output_track.frame_locations[frame_pos] = mpf.ImageLocation(0, 0, frame.shape[1], frame.shape[0])
 
         frame_pos = cap.current_frame_position
-        frame = cap.next()
+        frame = next(cap)
         self.assertEqual(29, get_frame_number(frame))
         self.assertEqual((30, 240), mpf_util.Size.from_frame(frame))
         output_track.frame_locations[frame_pos] = mpf.ImageLocation(5, 40, 15, 60)

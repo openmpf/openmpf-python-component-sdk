@@ -112,7 +112,7 @@ def _get_superset_region(ff_frame_locations):
         raise IndexError('FEED_FORWARD_TYPE: SUPERSET_REGION is enabled, but feed forward track was empty.')
 
     image_location_iter = ff_frame_locations.itervalues()
-    first_loc = image_location_iter.next()
+    first_loc = next(image_location_iter)
 
     region = utils.Rect.from_image_location(first_loc)
 
