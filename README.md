@@ -50,13 +50,23 @@ Using this API, detection components can be built to provide:
 ## Getting Started
 
 ### Build and Install the Component SDK
-TODO: Add build instructions
+It is recommended, but not required, that you install the Python Component SDK in a 
+[virtualenv](http://virtualenv.pypa.io) rather than system wide.
 
+* If not already installed, install [pip](https://pip.pypa.io).
+* (Optional) If not already installed, install [virtualenv](http://virtualenv.pypa.io).
+* (Optional) Create and activate a virtualenv:
+```bash
+virtualenv path/to/venv
+source path/to/venv/bin/activate
+```
+* Install the Python Component API: `pip install openmpf-python-component-sdk/detection/api`
+* (Optional) Install the Python Component Utilities: `pip install openmpf-python-component-sdk/detection/component_util`
 
 ### Using the Component SDK
 
-TODO: Add link targets
-Please read the Python Component API documentation to get started: [https://openmpf.github.io/docs/site/Python-Component-API/](https://openmpf.github.io/docs/site/Python-Component-API/)
+Please read the Python Component API documentation to get started: 
+[https://openmpf.github.io/docs/site/Python-Batch-Component-API](https://openmpf.github.io/docs/site/Python-Batch-Component-API)
 
 ## Project Website
 
