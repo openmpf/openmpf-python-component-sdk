@@ -124,7 +124,7 @@ class FrameFilter(object):
         :return: Segment frame position for the specified number of milliseconds
         """
         segment_fps = self.get_segment_frame_rate(original_frame_rate)
-        return segment_fps * segment_milliseconds // 1000
+        return int(segment_fps * segment_milliseconds / 1000)
 
 
     def get_segment_frame_position_ratio(self, original_position):
