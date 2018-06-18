@@ -24,6 +24,7 @@
 # limitations under the License.                                            #
 #############################################################################
 
+from __future__ import division, print_function
 
 import collections
 import logging

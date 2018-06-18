@@ -24,6 +24,7 @@
 # limitations under the License.                                            #
 #############################################################################
 
+from __future__ import division, print_function
 
 from . import frame_transformer, frame_rotator, frame_flipper, frame_cropper
 from .. import utils

@@ -26,7 +26,7 @@
 # limitations under the License.                                            #
 #############################################################################
 
-from __future__ import print_function
+from __future__ import division, print_function
 
 import os
 import sys
