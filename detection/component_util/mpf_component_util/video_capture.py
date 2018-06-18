@@ -24,6 +24,8 @@
 # limitations under the License.                                            #
 #############################################################################
 
+from __future__ import division, print_function
+
 from . import frame_filters
 from . import frame_transformers
 from . import utils
@@ -38,6 +40,7 @@ class VideoCapture(object):
         """
         Initializes a new VideoCapture instance, using the frame transformers specified in job_properties,
         to be used for video processing jobs.
+
         :param video_job:
         :param enable_frame_transformers: Automatically transform frames based on job properties
         :param enable_frame_filtering: Automatically skip frames based on job properties
@@ -204,6 +207,7 @@ class VideoCapture(object):
         If less than num_requested_frames are available, returned list will have as many initialization frames
         as are available.
         If the job's start frame is less than the frame interval, the returned vector will be empty.
+
         :param num_requested_frames:
         :return: list that contains between 0 and num_requested_frames frames
         """
@@ -290,6 +294,7 @@ class VideoCapture(object):
         it will attempt to fall back to the next SeekStrategy until it tries all the strategies.
         If this method fails that means it will have attempted to use frame_filters.ReadSeek.
         If frame_filters.ReadSeek fails, then it is not possible to read the video any further.
+
         :param requested_original_position:
         :return: true if the frame position was successfully set to requested_original_position
         """
@@ -319,20 +324,20 @@ class VideoCapture(object):
             first_track_frame = min(video_job.feed_forward_track.frame_locations)
             last_track_frame = max(video_job.feed_forward_track.frame_locations)
             if first_track_frame != video_job.start_frame or last_track_frame != video_job.stop_frame:
-                print >> sys.stderr, (
-                    'The feed forward track for Job: %s starts at frame %s and ends at frame %s, '
-                    'but the job\'s start frame is %s and its stop frame is %s. '
-                    'The job had a feed forward track so the entire feed forward track will be used.'
-                    % (video_job.job_name, first_track_frame, last_track_frame, video_job.start_frame,
-                       video_job.stop_frame))
+                print('The feed forward track for Job: %s starts at frame %s and ends at frame %s, '
+                      'but the job\'s start frame is %s and its stop frame is %s. '
+                      'The job had a feed forward track so the entire feed forward track will be used.'
+                      % (video_job.job_name, first_track_frame, last_track_frame, video_job.start_frame,
+                         video_job.stop_frame),
+                      file=sys.stderr)
             return frame_filters.FeedForwardFrameFilter(video_job.feed_forward_track)
 
         if utils.get_property(video_job.job_properties, 'USE_KEY_FRAMES', False):
             try:
                 return frame_filters.KeyFrameFilter(video_job)
             except EnvironmentError as err:
-                print >> sys.stderr, 'Unable to get key frames due to:', err
-                print >> sys.stderr, 'Falling back to IntervalFrameFilter'
+                print('Unable to get key frames due to:', err, file=sys.stderr)
+                print('Falling back to IntervalFrameFilter', file=sys.stderr)
 
 
         return frame_filters.IntervalFrameFilter.from_job(video_job, frame_count)

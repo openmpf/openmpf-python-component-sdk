@@ -24,6 +24,8 @@
 # limitations under the License.                                            #
 #############################################################################
 
+from __future__ import division, print_function
+
 import test_util
 test_util.add_local_component_libs_to_sys_path()
 
@@ -55,7 +57,9 @@ class FrameFilterTest(unittest.TestCase):
 
     def assert_segment_frame_count(self, filter_args, expected_count):
         for frame_filter in get_filters(filter_args):
-            self.assertEqual(expected_count, frame_filter.get_segment_frame_count())
+            actual_count = frame_filter.get_segment_frame_count()
+            self.assertIsInstance(actual_count, int)
+            self.assertEqual(expected_count, actual_count)
 
 
     def test_map_segment_to_original_frame_position(self):
@@ -74,8 +78,9 @@ class FrameFilterTest(unittest.TestCase):
 
     def assert_segment_to_original_frame_position(self, filter_args, segment_position, expected_original_position):
         for frame_filter in get_filters(filter_args):
-            self.assertEqual(expected_original_position,
-                             frame_filter.segment_to_original_frame_position(segment_position))
+            actual_original_position = frame_filter.segment_to_original_frame_position(segment_position)
+            self.assertIsInstance(actual_original_position, int)
+            self.assertEqual(expected_original_position, actual_original_position)
 
 
     def test_map_original_to_segment_indices(self):
@@ -94,18 +99,19 @@ class FrameFilterTest(unittest.TestCase):
 
     def assert_original_to_segment_frame_position(self, filter_args, original_position, expected_segment_position):
         for frame_filter in get_filters(filter_args):
-            self.assertEqual(expected_segment_position,
-                             frame_filter.original_to_segment_frame_position(original_position))
+            actual_segment_position = frame_filter.original_to_segment_frame_position(original_position)
+            self.assertIsInstance(actual_segment_position, int)
+            self.assertEqual(expected_segment_position, actual_segment_position)
 
 
     def test_get_segment_duration(self):
         self.assert_segment_duration((0, 9, 100), 10, 1, 0.1)
-        self.assert_segment_duration((0, 9, 100), 30, 1.0 / 3, 1.0 / 30)
+        self.assert_segment_duration((0, 9, 100), 30, 1 / 3, 1 / 30)
         self.assert_segment_duration((0, 199, 100), 10, 20, 10.1)
         self.assert_segment_duration((0, 149, 100), 10, 15, 10.1)
 
         self.assert_segment_duration((7, 16, 100), 10, 1, 0.1)
-        self.assert_segment_duration((7, 16, 100), 30, 1.0 / 3, 1.0 / 30)
+        self.assert_segment_duration((7, 16, 100), 30, 1 / 3, 1 / 30)
         self.assert_segment_duration((7, 206, 100), 10, 20, 10.1)
         self.assert_segment_duration((7, 156, 100), 10, 15, 10.1)
 
@@ -123,11 +129,11 @@ class FrameFilterTest(unittest.TestCase):
         self.assert_segment_frame_rate((0, 9, 1), 30, 30)
         self.assert_segment_frame_rate((100, 9000, 1), 30, 30)
 
-        self.assert_segment_frame_rate((0, 9, 2), 15, 50.0 / 3)
-        self.assert_segment_frame_rate((0, 10, 2), 180.0 / 11, 180.0 / 11)
-        self.assert_segment_frame_rate((1, 12, 2), 15, 180.0 / 11)
+        self.assert_segment_frame_rate((0, 9, 2), 15, 50 / 3)
+        self.assert_segment_frame_rate((0, 10, 2), 180 / 11, 180 / 11)
+        self.assert_segment_frame_rate((1, 12, 2), 15, 180 / 11)
 
-        self.assert_segment_frame_rate((0, 8, 3), 10, 90.0 / 7)
+        self.assert_segment_frame_rate((0, 8, 3), 10, 90 / 7)
         self.assert_segment_frame_rate((0, 9, 3), 12, 12)
 
 
@@ -143,22 +149,22 @@ class FrameFilterTest(unittest.TestCase):
         self.assert_current_segment_time((0, 9, 2), 0, 0, 0)
         self.assert_current_segment_time((1, 10, 2), 1, 0, 0)
 
-        self.assert_current_segment_time((0, 9, 1), 1, 100.0 / 3, 100.0 / 3)
-        self.assert_current_segment_time((1, 10, 1), 2, 100.0 / 3, 100.0 / 3)
+        self.assert_current_segment_time((0, 9, 1), 1, 100 / 3, 100 / 3)
+        self.assert_current_segment_time((1, 10, 1), 2, 100 / 3, 100 / 3)
 
-        self.assert_current_segment_time((0, 9, 1), 2, 200.0 / 3, 200.0 / 3)
-        self.assert_current_segment_time((0, 9, 2), 2, 200.0 / 3, 60)
-        self.assert_current_segment_time((1, 10, 2), 3, 200.0 / 3, 60)
+        self.assert_current_segment_time((0, 9, 1), 2, 200 / 3, 200 / 3)
+        self.assert_current_segment_time((0, 9, 2), 2, 200 / 3, 60)
+        self.assert_current_segment_time((1, 10, 2), 3, 200 / 3, 60)
 
-        self.assert_current_segment_time((0, 9, 1), 8, 800.0 / 3, 800.0 / 3)
-        self.assert_current_segment_time((0, 9, 2), 8, 800.0 / 3, 240)
-        self.assert_current_segment_time((1, 10, 2), 9, 800.0 / 3, 240)
+        self.assert_current_segment_time((0, 9, 1), 8, 800 / 3, 800 / 3)
+        self.assert_current_segment_time((0, 9, 2), 8, 800 / 3, 240)
+        self.assert_current_segment_time((1, 10, 2), 9, 800 / 3, 240)
 
         self.assert_current_segment_time((0, 9, 1), 9, 300, 300)
         self.assert_current_segment_time((1, 10, 1), 10, 300, 300)
 
-        self.assert_current_segment_time((2, 12, 1), 6, 400.0 / 3, 400.0 / 3)
-        self.assert_current_segment_time((2, 12, 2), 6, 1100.0 / 9, 1100.0 / 9)
+        self.assert_current_segment_time((2, 12, 1), 6, 400 / 3, 400 / 3)
+        self.assert_current_segment_time((2, 12, 2), 6, 1100 / 9, 1100 / 9)
 
 
     def assert_current_segment_time(self, filter_args, original_position,
@@ -187,8 +193,8 @@ class FrameFilterTest(unittest.TestCase):
         self.assert_segment_frame_position_ratio((10, 29, 2), 30, 1)
 
         self.assert_segment_frame_position_ratio((1, 11, 2), 1, 0)
-        self.assert_segment_frame_position_ratio((1, 11, 2), 3, 1.0 / 6)
-        self.assert_segment_frame_position_ratio((1, 11, 2), 5, 1.0 / 3)
+        self.assert_segment_frame_position_ratio((1, 11, 2), 3, 1 / 6)
+        self.assert_segment_frame_position_ratio((1, 11, 2), 5, 1 / 3)
 
 
     def assert_segment_frame_position_ratio(self, filter_args, original_position, expected_ratio):
@@ -205,8 +211,8 @@ class FrameFilterTest(unittest.TestCase):
         self.assert_ratio_to_original_frame_position((0, 4, 1), 0.5, 2)
         self.assert_ratio_to_original_frame_position((0, 5, 1), 0.5, 3)
 
-        self.assert_ratio_to_original_frame_position((0, 4, 1), 1.0 / 3, 1)
-        self.assert_ratio_to_original_frame_position((0, 5, 1), 1.0 / 3, 2)
+        self.assert_ratio_to_original_frame_position((0, 4, 1), 1 / 3, 1)
+        self.assert_ratio_to_original_frame_position((0, 5, 1), 1 / 3, 2)
 
         self.assert_ratio_to_original_frame_position((3, 14, 2), 0.5, 9)
         self.assert_ratio_to_original_frame_position((3, 15, 2), 0.5, 9)
@@ -214,7 +220,9 @@ class FrameFilterTest(unittest.TestCase):
 
     def assert_ratio_to_original_frame_position(self, filter_args, ratio, expected_frame_position):
         for frame_filter in get_filters(filter_args):
-            self.assertEqual(expected_frame_position, frame_filter.ratio_to_original_frame_position(ratio))
+            actual_frame_position = frame_filter.ratio_to_original_frame_position(ratio)
+            self.assertIsInstance(actual_frame_position, int)
+            self.assertEqual(expected_frame_position, actual_frame_position)
 
 
 
@@ -235,8 +243,9 @@ class FrameFilterTest(unittest.TestCase):
     def assert_millis_to_segment_frame_position(self, filter_args, original_frame_rate, segment_millis,
                                                 expected_segment_position):
         for frame_filter in get_filters(filter_args):
-            self.assertEqual(expected_segment_position,
-                             frame_filter.millis_to_segment_frame_position(original_frame_rate, segment_millis))
+            actual = frame_filter.millis_to_segment_frame_position(original_frame_rate, segment_millis)
+            self.assertIsInstance(actual, int)
+            self.assertEqual(expected_segment_position, actual)
 
 
 
@@ -259,12 +268,14 @@ class FrameFilterTest(unittest.TestCase):
 
     def assert_available_initialization_frames(self, start_frame, frame_interval, expected_num_available):
         interval_filter = IntervalFrameFilter(start_frame, start_frame + 10, frame_interval)
-        self.assertEqual(expected_num_available, interval_filter.get_available_initialization_frame_count())
+        actual_num_available = interval_filter.get_available_initialization_frame_count()
+        self.assertIsInstance(actual_num_available, int)
+        self.assertEqual(expected_num_available, actual_num_available)
 
 
 
     def assert_read_fails(self, cap):
-        self.assertRaises(StopIteration, cap.next)
+        self.assertRaises(StopIteration, next, cap)
 
 
     def assert_expected_frames_shown(self, cap_or_cap_args, expected_frames):
@@ -337,7 +348,7 @@ class FrameFilterTest(unittest.TestCase):
         self.assertTrue(cap.set_frame_position(5))
         self.assertEqual(5, cap.current_frame_position)
 
-        self.assertEqual(15, get_frame_number(cap.next()))
+        self.assertEqual(15, get_frame_number(next(cap)))
 
         self.assertEqual(cap.frame_count, cap.current_frame_position)
 
@@ -398,7 +409,7 @@ class FrameFilterTest(unittest.TestCase):
         cap = create_video_capture(10, 29, 5)
         cap.set_frame_position(2)
 
-        self.assertEqual(20, get_frame_number(cap.next()))
+        self.assertEqual(20, get_frame_number(next(cap)))
         self.assertEqual(3, cap.current_frame_position)
 
         init_frames = cap.get_initialization_frames_if_available(2)
@@ -407,7 +418,7 @@ class FrameFilterTest(unittest.TestCase):
         self.assertEqual(5, get_frame_number(init_frames[1]))
 
         self.assertEqual(3, cap.current_frame_position)
-        self.assertEqual(25, get_frame_number(cap.next()))
+        self.assertEqual(25, get_frame_number(next(cap)))
 
 
     def test_can_handle_feed_forward_track(self):
@@ -436,12 +447,12 @@ class FrameFilterTest(unittest.TestCase):
         self.assertEqual(expected_size, cap.frame_size)
 
         self.assert_frame_read(cap, 1, expected_size, 0)
-        self.assert_frame_read(cap, 3, expected_size, 1.0 / 7)
-        self.assert_frame_read(cap, 7, expected_size, 2.0 / 7)
-        self.assert_frame_read(cap, 11, expected_size, 3.0 / 7)
-        self.assert_frame_read(cap, 12, expected_size, 4.0 / 7)
-        self.assert_frame_read(cap, 20, expected_size, 5.0 / 7)
-        self.assert_frame_read(cap, 25, expected_size, 6.0 / 7)
+        self.assert_frame_read(cap, 3, expected_size, 1 / 7)
+        self.assert_frame_read(cap, 7, expected_size, 2 / 7)
+        self.assert_frame_read(cap, 11, expected_size, 3 / 7)
+        self.assert_frame_read(cap, 12, expected_size, 4 / 7)
+        self.assert_frame_read(cap, 20, expected_size, 5 / 7)
+        self.assert_frame_read(cap, 25, expected_size, 6 / 7)
 
         self.assertAlmostEqual(1, cap.frame_position_ratio)
         self.assert_read_fails(cap)
@@ -458,7 +469,7 @@ class FrameFilterTest(unittest.TestCase):
     def assert_frame_read(self, cap, expected_frame_number, expected_size, expected_ratio):
         self.assertEqual(expected_ratio, cap.frame_position_ratio)
 
-        frame = cap.next()
+        frame = next(cap)
         self.assertEqual(expected_frame_number, get_frame_number(frame))
 
         height, width, _ = frame.shape
@@ -482,7 +493,7 @@ class FrameFilterTest(unittest.TestCase):
         expected_size = mpf_util.Size(3, 5)
         self.assertEqual(expected_size, cap.frame_size)
 
-        frame = cap.next()
+        frame = next(cap)
         self.assertEqual(expected_size.width, frame.shape[1])
         self.assertEqual(expected_size.height, frame.shape[0])
 
@@ -672,19 +683,19 @@ class FrameFilterTest(unittest.TestCase):
         output_track = mpf.VideoTrack(0, 2)
 
         frame_pos = cap.current_frame_position
-        frame = cap.next()
+        frame = next(cap)
         self.assertEqual(4, get_frame_number(frame))
         self.assertEqual((65, 125), mpf_util.Size.from_frame(frame))
         output_track.frame_locations[frame_pos] = mpf.ImageLocation(0, 0, frame.shape[1], frame.shape[0])
 
         frame_pos = cap.current_frame_position
-        frame = cap.next()
+        frame = next(cap)
         self.assertEqual(15, get_frame_number(frame))
         self.assertEqual((100, 200), mpf_util.Size.from_frame(frame))
         output_track.frame_locations[frame_pos] = mpf.ImageLocation(0, 0, frame.shape[1], frame.shape[0])
 
         frame_pos = cap.current_frame_position
-        frame = cap.next()
+        frame = next(cap)
         self.assertEqual(29, get_frame_number(frame))
         self.assertEqual((30, 240), mpf_util.Size.from_frame(frame))
         output_track.frame_locations[frame_pos] = mpf.ImageLocation(5, 40, 15, 60)

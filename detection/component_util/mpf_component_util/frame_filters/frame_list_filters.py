@@ -24,6 +24,8 @@
 # limitations under the License.                                            #
 #############################################################################
 
+from __future__ import division, print_function
+
 from . import frame_filter
 from .. import utils
 
@@ -58,7 +60,7 @@ class _FrameListFilter(frame_filter.FrameFilter):
 
     def get_segment_duration(self, original_frame_rate):
         frame_range = self.__frames_to_show[-1] - self.__frames_to_show[0] + 1
-        return frame_range / float(original_frame_rate)
+        return frame_range / original_frame_rate
 
 
     def get_available_initialization_frame_count(self):
@@ -102,9 +104,8 @@ class KeyFrameFilter(_FrameListFilter):
             # Expected line format for key frame: frame.209.key_frame=1
             # Expected line format for non-key frame: frame.210.key_frame=0
             if not line.startswith(KeyFrameFilter.LINE_PREFIX):
-                print >> sys.stderr, ('Expected each line of output from ffprobe to start with "%s", '
-                                      'but the following line was found "%s"'
-                                      % (KeyFrameFilter.LINE_PREFIX, line))
+                print('Expected each line of output from ffprobe to start with "%s"' 
+                      'but the following line was found "%s"' % (KeyFrameFilter.LINE_PREFIX, line), file=sys.stderr)
                 continue
 
             line_parts = line.split('.')

@@ -24,6 +24,8 @@
 # limitations under the License.                                            #
 #############################################################################
 
+from __future__ import division, print_function
+
 import collections
 import operator
 import sys
@@ -43,8 +45,8 @@ def get_property(properties, key, default_value, prop_type=None):
     try:
         return prop_type(value)
     except (TypeError, ValueError) as err:
-        print >> sys.stderr, ('Failed to convert the "%s" key with value "%s" to %s due to: %s'
-                              % (key, value, prop_type, err))
+        print('Failed to convert the "%s" key with value "%s" to %s due to: %s' % (key, value, prop_type, err),
+              file=sys.stderr)
         return default_value
 
 

@@ -24,6 +24,7 @@
 # limitations under the License.                                            #
 #############################################################################
 
+from __future__ import division, print_function
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util

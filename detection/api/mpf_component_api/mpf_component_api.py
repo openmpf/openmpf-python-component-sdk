@@ -24,12 +24,13 @@
 # limitations under the License.                                            #
 #############################################################################
 
+from __future__ import division, print_function
 
 import collections
 import logging
 import logging.handlers
 import sys
-import mpf_component_api_util as util
+from . import mpf_component_api_util as util
 
 
 class Properties(util.TypedDict):

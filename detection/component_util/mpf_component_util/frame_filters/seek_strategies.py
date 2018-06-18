@@ -24,6 +24,8 @@
 # limitations under the License.                                            #
 #############################################################################
 
+from __future__ import division, print_function
+
 import cv2
 import sys
 
@@ -42,7 +44,7 @@ class SetFramePositionSeek(object):
 
     @staticmethod
     def fallback():
-        print >> sys.stderr, 'SetFramePositionSeek failed: falling back to GrabSeek'
+        print('SetFramePositionSeek failed: falling back to GrabSeek', file=sys.stderr)
         return GrabSeek()
 
 
@@ -84,7 +86,7 @@ class GrabSeek(_SequentialSeek):
 
     @staticmethod
     def fallback():
-        print >> sys.stderr, 'GrabSeek failed: falling back to ReadSeek'
+        print('GrabSeek failed: falling back to ReadSeek', file=sys.stderr)
         return ReadSeek()
 
 
@@ -96,5 +98,5 @@ class ReadSeek(_SequentialSeek):
 
     @staticmethod
     def fallback():
-        print >> sys.stderr, 'ReadSeek failed: No more fallbacks'
+        print('ReadSeek failed: No more fallbacks', file=sys.stderr)
         return None
