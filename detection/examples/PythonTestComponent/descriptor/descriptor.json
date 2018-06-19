@@ -1,46 +1,46 @@
 {
-  "componentName" : "PythonTestComponent",
-  "componentVersion" : "2.0.0",
-  "middlewareVersion" : "2.0.0",
-  "sourceLanguage" : "python",
-  "batchLibrary" : "${MPF_HOME}/plugins/PythonTestComponent/test_component.py",
-  "environmentVariables" : [],
-  "algorithm" : {
-    "name" : "PYTHONTEST",
-    "description" : "A dummy Python detection component.",
-    "actionType" : "DETECTION",
-    "requiresCollection" : {
-      "states" : []
+  "componentName": "PythonTestComponent",
+  "componentVersion": "2.1.0",
+  "middlewareVersion": "2.1.0",
+  "sourceLanguage": "python",
+  "batchLibrary": "${MPF_HOME}/plugins/PythonTestComponent/test_component.py",
+  "environmentVariables": [],
+  "algorithm": {
+    "name": "PYTHONTEST",
+    "description": "A dummy Python detection component.",
+    "actionType": "DETECTION",
+    "requiresCollection": {
+      "states": []
     },
-    "providesCollection" : {
-      "states" : [
+    "providesCollection": {
+      "states": [
         "DETECTION",
         "DETECTION_TEST",
         "DETECTION_TEST_PYTHON"
       ],
-      "properties" : [
+      "properties": [
         {
-          "name" : "prop1",
-          "description" : "my prop 1",
-          "type" : "INT",
-          "defaultValue" : "2"
+          "name": "prop1",
+          "description": "my prop 1",
+          "type": "INT",
+          "defaultValue": "2"
         },
         {
-          "name" : "prop2",
-          "description" : "my prop 2",
-          "type" : "BOOLEAN",
-          "defaultValue" : "true"
+          "name": "prop2",
+          "description": "my prop 2",
+          "type": "BOOLEAN",
+          "defaultValue": "true"
         },
         {
-          "name" : "prop3",
-          "description" : "my prop 3",
-          "type" : "STRING",
-          "defaultValue" : "string property"
+          "name": "prop3",
+          "description": "my prop 3",
+          "type": "STRING",
+          "defaultValue": "string property"
         }
       ]
     }
   },
-  "actions" : [
+  "actions": [
     {
       "name": "PYTHON TEST ACTION",
       "description": "PYTHON TEST ACTION",
@@ -57,7 +57,7 @@
       ]
     }
   ],
-  "pipelines":[
+  "pipelines": [
     {
       "name": "PYTHON TEST PIPELINE",
       "description": "PYTHON TEST PIPELINE",
@@ -74,6 +74,5 @@
       ]
     }
   ]
-
 }
 

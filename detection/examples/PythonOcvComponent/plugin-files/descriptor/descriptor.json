@@ -1,46 +1,46 @@
 {
-  "componentName" : "PythonOcvComponent",
-  "componentVersion" : "2.0.0",
-  "middlewareVersion" : "2.0.0",
-  "sourceLanguage" : "python",
-  "batchLibrary" : "PythonOcvComponent",
-  "environmentVariables" : [],
-  "algorithm" : {
-    "name" : "PYTHONOCVTEST",
-    "description" : "A dummy Python detection component.",
-    "actionType" : "DETECTION",
-    "requiresCollection" : {
-      "states" : []
+  "componentName": "PythonOcvComponent",
+  "componentVersion": "2.1.0",
+  "middlewareVersion": "2.1.0",
+  "sourceLanguage": "python",
+  "batchLibrary": "PythonOcvComponent",
+  "environmentVariables": [],
+  "algorithm": {
+    "name": "PYTHONOCVTEST",
+    "description": "A dummy Python detection component.",
+    "actionType": "DETECTION",
+    "requiresCollection": {
+      "states": []
     },
-    "providesCollection" : {
-      "states" : [
+    "providesCollection": {
+      "states": [
         "DETECTION",
         "DETECTION_TEST_OCV",
         "DETECTION_TEST_OCV_PYTHON"
       ],
-      "properties" : [
+      "properties": [
         {
-          "name" : "prop1",
-          "description" : "my prop 1",
-          "type" : "INT",
-          "defaultValue" : "2"
+          "name": "prop1",
+          "description": "my prop 1",
+          "type": "INT",
+          "defaultValue": "2"
         },
         {
-          "name" : "prop2",
-          "description" : "my prop 2",
-          "type" : "BOOLEAN",
-          "defaultValue" : "true"
+          "name": "prop2",
+          "description": "my prop 2",
+          "type": "BOOLEAN",
+          "defaultValue": "true"
         },
         {
-          "name" : "prop3",
-          "description" : "my prop 3",
-          "type" : "STRING",
-          "defaultValue" : "string property"
+          "name": "prop3",
+          "description": "my prop 3",
+          "type": "STRING",
+          "defaultValue": "string property"
         }
       ]
     }
   },
-  "actions" : [
+  "actions": [
     {
       "name": "PYTHON OCV TEST ACTION",
       "description": "PYTHON OCV TEST ACTION",
@@ -57,7 +57,7 @@
       ]
     }
   ],
-  "pipelines":[
+  "pipelines": [
     {
       "name": "PYTHON OCV TEST PIPELINE",
       "description": "PYTHON OCV TEST PIPELINE",
