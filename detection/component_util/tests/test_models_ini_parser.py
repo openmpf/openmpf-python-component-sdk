@@ -37,15 +37,20 @@ import mpf_component_util as mpf_util
 
 
 MODELS_INI = """
-[test_model]
+[test model]
 string_field=hello world
 int_field = 567
 path_field=test_file.txt
 
-[other_model]
+[other model]
 string_field=other
 int_field = 765
 path_field=other_file.txt
+
+[empty path model]
+string_field=hello world
+int_field=5
+path_field=
 """
 
 
@@ -77,7 +82,7 @@ class ModelsIniParserTest(unittest.TestCase):
         with open(os.path.join(test_file_path), 'w') as f:
             f.write('test')
 
-        model_settings = self._ModelSettings('test_model', self._common_models_dir)
+        model_settings = self._ModelSettings('test model', self._common_models_dir)
         self.assertEqual('hello world', model_settings.string_field)
         self.assertEqual(567, model_settings.int_field)
         self.assertEqual(test_file_path, model_settings.path_field)
@@ -89,7 +94,7 @@ class ModelsIniParserTest(unittest.TestCase):
         with open(os.path.join(test_file_path), 'w') as f:
             f.write('test')
 
-        model_settings = self._ModelSettings('test_model', self._common_models_dir)
+        model_settings = self._ModelSettings('test model', self._common_models_dir)
         self.assertEqual('hello world', model_settings.string_field)
         self.assertEqual(567, model_settings.int_field)
         self.assertEqual(test_file_path, model_settings.path_field)
@@ -105,12 +110,12 @@ class ModelsIniParserTest(unittest.TestCase):
             f.write('test')
 
         for i in xrange(2):
-            model_settings = self._ModelSettings('test_model', self._common_models_dir)
+            model_settings = self._ModelSettings('test model', self._common_models_dir)
             self.assertEqual('hello world', model_settings.string_field)
             self.assertEqual(567, model_settings.int_field)
             self.assertEqual(test_file_path, model_settings.path_field)
 
-            model_settings = self._ModelSettings('other_model', self._common_models_dir)
+            model_settings = self._ModelSettings('other model', self._common_models_dir)
             self.assertEqual('other', model_settings.string_field)
             self.assertEqual(765, model_settings.int_field)
             self.assertEqual(other_file_path, model_settings.path_field)
@@ -126,20 +131,29 @@ class ModelsIniParserTest(unittest.TestCase):
         with open(os.path.join(test_file_common_path), 'w') as f:
             f.write('test')
 
-        model_settings = self._ModelSettings('test_model', self._common_models_dir)
+        model_settings = self._ModelSettings('test model', self._common_models_dir)
         self.assertEqual('hello world', model_settings.string_field)
         self.assertEqual(567, model_settings.int_field)
         self.assertEqual(test_file_common_path, model_settings.path_field)
 
 
     def test_throws_when_file_not_found(self):
-        self.assertRaises(IOError, self._ModelSettings, 'test_model', self._common_models_dir)
+        self.assertRaises(mpf_util.ModelFileNotFoundError, self._ModelSettings, 'test model', self._common_models_dir)
 
 
     def test_unknown_model(self):
         with self.assertRaises(mpf_util.ModelNotFoundError) as err:
-            self._ModelSettings('not_a_model', self._common_models_dir)
+            self._ModelSettings('not a model', self._common_models_dir)
 
-        self.assertEqual('not_a_model', err.exception.requested_model)
-        self.assertItemsEqual(('test_model', 'other_model'), err.exception.available_models)
+        self.assertEqual('not a model', err.exception.requested_model)
+        self.assertItemsEqual(('test model', 'other model', 'empty path model'),
+                              err.exception.available_models)
+
+    def test_empty_path(self):
+        with self.assertRaises(mpf_util.ModelEmptyPathError) as err:
+            self._ModelSettings('empty path model', self._common_models_dir)
+
+        self.assertEqual('empty path model', err.exception.model_name)
+        self.assertEqual('path_field', err.exception.field_name)
+
 

@@ -68,23 +68,14 @@ class ModelsIniParser(object):
 
                     for field_name in path_fields:
                         raw_field_value = config.get(model_name, field_name)
-                        setattr(self, field_name, _get_full_path(raw_field_value, plugin_models_dir, common_models_dir))
+                        if len(raw_field_value) == 0:
+                            raise ModelEmptyPathError(models_ini_full_path, model_name, field_name)
+                        setattr(self, field_name,
+                                _get_full_path(raw_field_value, plugin_models_dir, common_models_dir))
                 except ConfigParser.NoSectionError:
                     raise ModelNotFoundError(models_ini_full_path, model_name, config.sections())
 
         return ModelSettings
-
-
-class ModelNotFoundError(Exception):
-    def __init__(self, models_ini_full_path, requested_model, available_models):
-        args = (requested_model, models_ini_full_path, available_models)
-        super(ModelNotFoundError, self).__init__(
-            'Failed to load the requested model named "%s", because it was not one of the models listed in the model '
-            'configuration file located at "%s". The available models are %s'
-            % args, args)
-        self.models_ini_full_path = models_ini_full_path
-        self.requested_model = requested_model
-        self.available_models = available_models
 
 
 def _get_full_path(file_name, plugin_models_dir, common_models_dir):
@@ -98,13 +89,44 @@ def _get_full_path(file_name, plugin_models_dir, common_models_dir):
         if os.path.exists(possible_location):
             return possible_location
 
-    error_msg = 'Failed to load model because a required file was not present. Expected a file to exist at '
-    if file_name[0] == '/':
-        error_msg += '"%s".' % file_name
-    else:
-        error_msg += 'either "%s" or "%s".' % (possible_locations[0], possible_locations[1])
-    raise IOError(error_msg)
+    raise ModelFileNotFoundError(possible_locations)
 
 
 def _expand_path(path, *paths):
     return os.path.expandvars(os.path.expanduser(os.path.join(path, *paths)))
+
+
+
+class ModelsIniError(Exception):
+    pass
+
+
+class ModelNotFoundError(ModelsIniError):
+    def __init__(self, models_ini_path, requested_model, available_models):
+        super(ModelNotFoundError, self).__init__(
+            'Failed to load the requested model named "%s", because it was not one of the models listed in the model '
+            'configuration file located at "%s". The available models are %s'
+            % (requested_model, models_ini_path, available_models))
+        self.models_ini_path = models_ini_path
+        self.requested_model = requested_model
+        self.available_models = available_models
+
+
+
+class ModelEmptyPathError(ModelsIniError):
+    def __init__(self, models_ini_path, model_name, field_name):
+        super(ModelEmptyPathError, self).__init__(
+            'Failed to the load the requested model named "%s", '
+            'because the "%s" field was empty in the configuration file located at "%s"'
+            % (model_name, field_name, models_ini_path))
+        self.models_ini_path = models_ini_path
+        self.model_name = model_name
+        self.field_name = field_name
+
+
+class ModelFileNotFoundError(IOError, ModelsIniError):
+    def __init__(self, possible_locations):
+        super(ModelFileNotFoundError, self).__init__(
+            'Failed to load model because a required file was not present. '
+            'Expected a file to exist at one of the following locations: %s' % (possible_locations,))
+        self.possible_locations = possible_locations
