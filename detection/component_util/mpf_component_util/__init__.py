@@ -28,4 +28,7 @@ from .image_reader import ImageReader, ImageReaderMixin
 
 from .video_capture import VideoCapture, VideoCaptureMixin
 
+from .models_ini_parser import (ModelsIniParser, ModelNotFoundError, ModelsIniError, ModelFileNotFoundError,
+                                ModelEmptyPathError)
+
 from .utils import *
