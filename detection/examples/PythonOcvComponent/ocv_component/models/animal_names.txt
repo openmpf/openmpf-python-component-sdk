@@ -1,0 +1,5 @@
+zebra
+giraffe
+capybara
+dog
+cat
