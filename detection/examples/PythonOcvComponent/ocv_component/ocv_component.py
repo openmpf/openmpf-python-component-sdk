@@ -43,7 +43,7 @@ class OcvComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, object
     @staticmethod
     def get_detections_from_image_reader(image_job, image_reader):
         logger.info('[%s] Received image job: %s', image_job.job_name, image_job)
-        model = get_model(image_job)
+        model = get_model(image_job)  # A real component would use the model.
 
         img = image_reader.get_image()
 
@@ -62,7 +62,7 @@ class OcvComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, object
     @staticmethod
     def get_detections_from_video_capture(video_job, video_capture):
         logger.info('[%s] Received video job: %s', video_job.job_name, video_job)
-        model = get_model(video_job)
+        model = get_model(video_job)  # A real component would use the model.
 
         width, height = video_capture.frame_size
 
@@ -97,7 +97,7 @@ def get_model(job):
     models_dir_path = os.path.join(job.job_properties.get('MODELS_DIR_PATH', '.'),
                                    'PythonOcvComponent')
     model_settings = ModelSettings(model_name, models_dir_path)
-    logger.info('[%s] Successfully retrieved settings file for the "%s". model: '
+    logger.info('[%s] Successfully retrieved settings file for the "%s" model: '
                 '{ network = "%s", names = "%s", num_classes = %s }',
                 job.job_name, model_name, model_settings.network, model_settings.names, model_settings.num_classes)
     return load_model(model_settings)
