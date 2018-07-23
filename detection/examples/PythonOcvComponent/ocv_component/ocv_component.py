@@ -26,6 +26,9 @@
 
 from __future__ import division, print_function
 
+import pkg_resources
+import os
+
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
@@ -40,6 +43,7 @@ class OcvComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, object
     @staticmethod
     def get_detections_from_image_reader(image_job, image_reader):
         logger.info('[%s] Received image job: %s', image_job.job_name, image_job)
+        model = get_model(image_job)  # A real component would use the model.
 
         img = image_reader.get_image()
 
@@ -58,6 +62,7 @@ class OcvComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, object
     @staticmethod
     def get_detections_from_video_capture(video_job, video_capture):
         logger.info('[%s] Received video job: %s', video_job.job_name, video_job)
+        model = get_model(video_job)  # A real component would use the model.
 
         width, height = video_capture.frame_size
 
@@ -79,3 +84,28 @@ class OcvComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, object
 
 
 
+
+ModelSettings = (mpf_util.ModelsIniParser(pkg_resources.resource_filename(__name__, 'models'))
+                 .register_path_field('network')
+                 .register_path_field('names')
+                 .register_int_field('num_classes')
+                 .build_class())
+
+
+def get_model(job):
+    model_name = job.job_properties.get('MODEL_NAME', 'animal model')
+    models_dir_path = os.path.join(job.job_properties.get('MODELS_DIR_PATH', '.'),
+                                   'PythonOcvComponent')
+    model_settings = ModelSettings(model_name, models_dir_path)
+    logger.info('[%s] Successfully retrieved settings file for the "%s" model: '
+                '{ network = "%s", names = "%s", num_classes = %s }',
+                job.job_name, model_name, model_settings.network, model_settings.names, model_settings.num_classes)
+    return load_model(model_settings)
+
+
+def load_model(model_settings):
+    # A real component would actually load the model here.
+    with open(model_settings.names) as f:
+        names = [line.strip() for line in f]
+    logger.info('Successfully loaded names file from "%s": %s', model_settings.names, names)
+    return object()
