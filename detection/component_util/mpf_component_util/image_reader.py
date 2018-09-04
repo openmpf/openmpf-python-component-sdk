@@ -28,12 +28,23 @@ from __future__ import division, print_function
 
 from . import frame_transformers
 from . import utils
+import mpf_component_api as mpf
 import cv2
 
 
 class ImageReader(object):
+
     def __init__(self, image_job):
-        image = cv2.imread(image_job.data_uri, cv2.IMREAD_IGNORE_ORIENTATION + cv2.IMREAD_COLOR)
+        video_cap = cv2.VideoCapture(image_job.data_uri)
+        if not video_cap.isOpened():
+            raise mpf.DetectionException('Failed to open "%s".' % image_job.data_uri,
+                                         mpf.DetectionError.COULD_NOT_OPEN_DATAFILE)
+
+        was_read, image = video_cap.read()
+        if not was_read or image is None:
+            raise mpf.DetectionException('Failed to read image from "%s".' % image_job.data_uri,
+                                         mpf.DetectionError.COULD_NOT_READ_DATAFILE)
+
         size = utils.Size.from_frame(image)
         self.__frame_transformer = frame_transformers.factory.get_transformer(image_job, size)
         self.__image = self.__frame_transformer.transform_frame(image, 0)

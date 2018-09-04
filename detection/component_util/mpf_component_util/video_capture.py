@@ -46,6 +46,10 @@ class VideoCapture(object):
         :param enable_frame_filtering: Automatically skip frames based on job properties
         """
         self.__cv_video_capture = cv2.VideoCapture(video_job.data_uri)
+        if not self.__cv_video_capture.isOpened():
+            raise mpf.DetectionException('Failed to open "%s".' % video_job.data_uri,
+                                         mpf.DetectionError.COULD_NOT_OPEN_DATAFILE)
+
         self.__frame_filter = self.__get_frame_filter(enable_frame_filtering, video_job, self.__cv_video_capture)
         self.__frame_transformer = self.__get_frame_transformer(enable_frame_transformers, video_job)
         self.__seek_strategy = frame_filters.SetFramePositionSeek()
