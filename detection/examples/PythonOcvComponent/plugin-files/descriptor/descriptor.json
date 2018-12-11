@@ -1,7 +1,7 @@
 {
   "componentName": "PythonOcvComponent",
-  "componentVersion": "2.1.0",
-  "middlewareVersion": "2.1.0",
+  "componentVersion": "3.0.0",
+  "middlewareVersion": "3.0.0",
   "sourceLanguage": "python",
   "batchLibrary": "PythonOcvComponent",
   "environmentVariables": [],
