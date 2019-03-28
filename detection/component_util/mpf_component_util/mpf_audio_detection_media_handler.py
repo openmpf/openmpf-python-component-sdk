@@ -31,7 +31,16 @@ import mpf_component_api as mpf
 
 logger = mpf.configure_logging('mpf-audio-detection-media-handler.log', __name__ == '__main__')
 
-def rip_audio(video_path, audio_path, start_time, stop_time):
+def rip_audio(video_path, audio_path, start_time=0, stop_time=None):
+    """
+    Rips the audio from from start_time to stop_time in video_path and writes
+    it to audio_path (a .wav file)
+
+    :param video_path: The path to the video file (video_job.data_uri).
+    :param audio_path: The path at which to save the audio.
+    :param start_time: The time (0-based index, in milliseconds) associated with the beginning of audio segment to rip from the video. Default 0.
+    :param stop_time: The time (0-based index, in milliseconds) associated with the end of the audio segment to rip from the video. To go to the end of the file, pass None. Default None.
+    """
     logger.info((
             'Ripping audio from {video_path:s} into {audio_path:s}'
         ).format(
@@ -55,13 +64,16 @@ def rip_audio(video_path, audio_path, start_time, stop_time):
 
     # Convert milliseconds to seconds
     offset = start_time / 1000.0
-    duration = (stop_time - start_time) / 1000.0
+    duration = None
+    if stop_time is not None:
+        duration = (stop_time - start_time) / 1000.0
 
     # Construct ffmpeg call
     command = (
-        'ffmpeg -i {video_path:s} -ss {offset:f} -t {duration:f} '
-        '-ac {channels:d} -ar {sampling_rate:d} -acodec {codec:s} '
-        '-af "highpass=f={highpass:d}, lowpass=f={lowpass:d}" -vn '
+        'ffmpeg -i {video_path:s} -ss {offset:f} ' +
+        ('-t {duration:f} ' if stop_time is not None else '') +
+        '-ac {channels:d} -ar {sampling_rate:d} -acodec {codec:s} ' +
+        '-af "highpass=f={highpass:d}, lowpass=f={lowpass:d}" -vn ' +
         '-f {format:s} -y {audio_path:s} -loglevel error'
     ).format(
         video_path=video_path,
@@ -80,5 +92,6 @@ def rip_audio(video_path, audio_path, start_time, stop_time):
     logger.info('query = %s', command)
     subprocess.call(command, shell=True)
 
+    # If the file doesn't exist now, we failed to write it
     if not os.path.isfile(audio_path):
         raise IOError("Unable to transcode input file: " + video_path)
