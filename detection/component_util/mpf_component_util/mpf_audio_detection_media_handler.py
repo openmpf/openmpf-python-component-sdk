@@ -26,6 +26,7 @@
 
 import os
 import subprocess
+import pipes
 
 import mpf_component_api as mpf
 
@@ -74,10 +75,13 @@ def rip_audio(video_path, audio_path, start_time=0, stop_time=None):
         ('-t {duration:f} ' if stop_time is not None else '') +
         '-ac {channels:d} -ar {sampling_rate:d} -acodec {codec:s} ' +
         '-af "highpass=f={highpass:d}, lowpass=f={lowpass:d}" -vn ' +
-        '-f {format:s} -y {audio_path:s} -loglevel error'
+        '-f {format:s} {audio_path:s} ' +
+        '-vn ' +            # Disable video
+        '-y ' +             # Overwrite output files
+        '-loglevel error '  # Suppress logs
     ).format(
-        video_path=video_path,
-        audio_path=audio_path,
+        video_path=pipes.quote(video_path),
+        audio_path=pipes.quote(audio_path),
         offset=offset,
         duration=duration,
         channels=1,
@@ -90,8 +94,37 @@ def rip_audio(video_path, audio_path, start_time=0, stop_time=None):
 
     # Call ffmpeg
     logger.info('query = %s', command)
-    subprocess.call(command, shell=True)
+    p = subprocess.Popen(command, shell=True, stderr=subprocess.PIPE)
+
+    try:
+        # Wait for ffmpeg to complete, get stderr
+        outs, errs = p.communicate()
+    except Exception:
+        error_str = "ffmpeg exception on input file {video_path:s}".format(
+            video_path=video_path
+        )
+        logger.error(error_str)
+        raise mpf.DetectionException(
+            error_str,
+            mpf.DetectionError.OTHER_DETECTION_ERROR_TYPE
+        )
+
+    # If we get a nonzero exit status, raise exception for it
+    if p.returncode != 0:
+        error_str = "ffmpeg had non-zero exit status: {e:s}".format(errs)
+        logger.error(error_str)
+        raise mpf.DetectionException(
+            error_str,
+            mpf.DetectionError.OTHER_DETECTION_ERROR_TYPE
+        )
 
     # If the file doesn't exist now, we failed to write it
     if not os.path.isfile(audio_path):
-        raise IOError("Unable to transcode input file: " + video_path)
+        error_str = "Unable to transcode input file: {video_path:s}".format(
+            video_path=video_path
+        )
+        logger.error(error_str)
+        raise mpf.DetectionException(
+            error_str,
+            mpf.DetectionError.OTHER_DETECTION_ERROR_TYPE
+        )
