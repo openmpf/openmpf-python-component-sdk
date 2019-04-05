@@ -24,9 +24,10 @@
 # limitations under the License.                                            #
 #############################################################################
 
+from __future__ import print_function, division
+
 import os
 import subprocess
-import pipes
 
 import mpf_component_api as mpf
 
@@ -63,66 +64,61 @@ def rip_audio(video_path, audio_path, start_time=0, stop_time=None):
     if not os.path.isdir(audio_dir):
         raise ValueError("Output directory does not exist: " + audio_dir)
 
-    # Convert milliseconds to seconds
-    offset = start_time / 1000.0
-    duration = None
-    if stop_time is not None:
-        duration = (stop_time - start_time) / 1000.0
-
     # Construct ffmpeg call
-    command = (
-        'ffmpeg -i {video_path:s} -ss {offset:f} ' +
-        ('-t {duration:f} ' if stop_time is not None else '') +
-        '-ac {channels:d} -ar {sampling_rate:d} -acodec {codec:s} ' +
-        '-af "highpass=f={highpass:d}, lowpass=f={lowpass:d}" -vn ' +
-        '-f {format:s} {audio_path:s} ' +
-        '-vn ' +            # Disable video
-        '-y ' +             # Overwrite output files
-        '-loglevel error '  # Suppress logs
-    ).format(
-        video_path=pipes.quote(video_path),
-        audio_path=pipes.quote(audio_path),
-        offset=offset,
-        duration=duration,
-        channels=1,
-        sampling_rate=16000,
-        codec='pcm_s16le',
-        highpass=200,
-        lowpass=3000,
-        format='wav'
+    # Note: ffmpeg options apply to the next specified file. Order matters.
+    command = ('ffmpeg', '-i', video_path)
+    if start_time:
+        command += ('-ss', str(start_time/1000.0))  # Audio clip start time (ms)
+    if stop_time:
+        command += ('-to', str(stop_time/1000.0))   # Audio clip end time (ms)
+    command += (
+        '-ac', '1',                                 # Channels
+        '-ar', '16000',                             # Sampling rate
+        '-acodec', 'pcm_s16le',                     # Audio codec
+        '-af', 'highpass=f=200,lowpass=f=3000',     # Audio filter graph
+        '-f', 'wav',                                # Save as WAV file
+        audio_path,
+        '-vn',                                      # Disable video
+        '-y',                                       # Overwrite output files
+        '-loglevel', 'error'                        # Suppress logs
     )
 
     # Call ffmpeg
-    logger.info('query = %s', command)
-    p = subprocess.Popen(command, shell=True, stderr=subprocess.PIPE)
-
     try:
-        # Wait for ffmpeg to complete, get stderr
-        outs, errs = p.communicate()
-    except Exception:
-        error_str = "ffmpeg exception on input file {video_path:s}".format(
-            video_path=video_path
-        )
-        logger.error(error_str)
-        raise mpf.DetectionException(
-            error_str,
-            mpf.DetectionError.OTHER_DETECTION_ERROR_TYPE
-        )
+        proc = subprocess.Popen(command, stderr=subprocess.PIPE)
+    except OSError as err:
+        # 2 corresponds to errno.ENOENT (no such file or directory)
+        if err.errno == 2:
+            raise EnvironmentError(
+                err.errno,
+                'ffmpeg does not appear to be installed'
+            )
+        else:
+            raise
+
+    # Wait for ffmpeg to complete, get stderr
+    outs, errs = proc.communicate()
 
     # If we get a nonzero exit status, raise exception for it
-    if p.returncode != 0:
-        error_str = "ffmpeg had non-zero exit status: {e:s}".format(errs)
-        logger.error(error_str)
-        raise mpf.DetectionException(
-            error_str,
-            mpf.DetectionError.OTHER_DETECTION_ERROR_TYPE
-        )
+    exit_code = proc.returncode
+    if exit_code != 0:
+        error_msg = 'The ffmpeg process exited '
+        if exit_code > 0:
+            error_msg += 'with exit code: {c:d}.'.format(c=exit_code)
+        else:
+            # When exit code is negative, it is the number of the signal that
+            # caused the process to exit
+            error_msg += 'due to signal number: {c:d}.'.format(c=-exit_code)
+            exit_code = 128 - exit_code
+        if errs:
+            error_msg += ' Error message: {e:s}'.format(e=errs)
+        logger.error(error_msg)
+        raise EnvironmentError(exit_code, error_msg)
+
 
     # If the file doesn't exist now, we failed to write it
     if not os.path.isfile(audio_path):
-        error_str = "Unable to transcode input file: {video_path:s}".format(
-            video_path=video_path
-        )
+        error_str = "Unable to transcode input file: " + video_path
         logger.error(error_str)
         raise mpf.DetectionException(
             error_str,
