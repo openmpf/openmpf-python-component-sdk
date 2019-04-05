@@ -30,7 +30,7 @@ import pipes
 
 import mpf_component_api as mpf
 
-logger = mpf.configure_logging('mpf-audio-detection-media-handler.log', __name__ == '__main__')
+logger = mpf.configure_logging('audio-ripper.log', __name__ == '__main__')
 
 def rip_audio(video_path, audio_path, start_time=0, stop_time=None):
     """

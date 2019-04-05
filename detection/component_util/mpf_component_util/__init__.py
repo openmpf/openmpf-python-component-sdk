@@ -28,7 +28,7 @@ from .image_reader import ImageReader, ImageReaderMixin
 
 from .video_capture import VideoCapture, VideoCaptureMixin
 
-from .mpf_audio_detection_media_handler import rip_audio
+from .audio_ripper import rip_audio
 
 from .models_ini_parser import (ModelsIniParser, ModelNotFoundError, ModelsIniError, ModelFileNotFoundError,
                                 ModelEmptyPathError)
