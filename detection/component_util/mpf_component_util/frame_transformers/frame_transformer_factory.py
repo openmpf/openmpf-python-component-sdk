@@ -122,18 +122,30 @@ def _get_superset_region(ff_frame_locations):
     return region
 
 
+def _get_search_region_coord(job_properties, key, default, max_val):
+    str_val = job_properties.get(key)
+    if str_val is None:
+        return int(default)
+    percent_idx = str_val.find('%')
+    if percent_idx < 0:
+        try:
+            return int(str_val)
+        except ValueError:
+            return int(default)
+    try:
+        percentage = float(str_val[:percent_idx])
+        return int(percentage * max_val / 100)
+    except ValueError:
+        return int(default)
+
 
 def _get_search_region(job_properties, input_frame_size):
-    region_x = max(0, utils.get_property(job_properties, 'SEARCH_REGION_TOP_LEFT_X_DETECTION', 0))
-    region_y = max(0, utils.get_property(job_properties, 'SEARCH_REGION_TOP_LEFT_Y_DETECTION', 0))
-
-    region_br_x = utils.get_property(job_properties, 'SEARCH_REGION_BOTTOM_RIGHT_X_DETECTION', -1)
-    if region_br_x <= 0:
-        region_br_x = input_frame_size[0]
-
-    region_br_y = utils.get_property(job_properties, 'SEARCH_REGION_BOTTOM_RIGHT_Y_DETECTION', -1)
-    if region_br_y <= 0:
-        region_br_y = input_frame_size[1]
+    region_x = _get_search_region_coord(job_properties, 'SEARCH_REGION_TOP_LEFT_X_DETECTION', 0, input_frame_size[0])
+    region_y = _get_search_region_coord(job_properties, 'SEARCH_REGION_TOP_LEFT_Y_DETECTION', 0, input_frame_size[1])
+    region_br_x = _get_search_region_coord(job_properties, 'SEARCH_REGION_BOTTOM_RIGHT_X_DETECTION',
+                                           input_frame_size[0], input_frame_size[0])
+    region_br_y = _get_search_region_coord(job_properties, 'SEARCH_REGION_BOTTOM_RIGHT_Y_DETECTION',
+                                           input_frame_size[1], input_frame_size[1])
 
 
     return utils.Rect.from_corners(utils.Point(region_x, region_y), utils.Point(region_br_x, region_br_y))
