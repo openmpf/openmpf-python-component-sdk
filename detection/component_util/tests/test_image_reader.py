@@ -32,6 +32,7 @@ test_util.add_local_component_libs_to_sys_path()
 import unittest
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
+import mpf_component_util.frame_transformers as frame_transformers
 
 
 def images_equal(im1, im2):
@@ -153,6 +154,55 @@ class TestImageReader(unittest.TestCase):
         self.assertEqual((220, 120, 20, 30), mpf_util.Rect.from_image_location(results[1]))
         self.assertEqual((300, 120, 20, 30), mpf_util.Rect.from_image_location(results[2]))
         self.assertEqual((220, 170, 20, 30), mpf_util.Rect.from_image_location(results[3]))
+
+
+    def test_search_region_percentage(self):
+        job_properties = {}
+
+        self.assertEqual(mpf_util.Rect(0, 0, 100, 200),
+                         frame_transformers.factory._get_search_region(job_properties, (100, 200)))
+
+        job_properties['SEARCH_REGION_TOP_LEFT_X_DETECTION'] = '50%'
+
+        self.assertEqual(mpf_util.Rect(50, 0, 50, 200),
+                         frame_transformers.factory._get_search_region(job_properties, (100, 200)))
+
+        job_properties['SEARCH_REGION_BOTTOM_RIGHT_X_DETECTION'] = '75%'
+        self.assertEqual(mpf_util.Rect(50, 0, 25, 200),
+                         frame_transformers.factory._get_search_region(job_properties, (100, 200)))
+
+        job_properties['SEARCH_REGION_TOP_LEFT_Y_DETECTION'] = '10%'
+        self.assertEqual(mpf_util.Rect(50, 20, 25, 180),
+                         frame_transformers.factory._get_search_region(job_properties, (100, 200)))
+
+        job_properties['SEARCH_REGION_BOTTOM_RIGHT_Y_DETECTION'] = '30%'
+        self.assertEqual(mpf_util.Rect(50, 20, 25, 40),
+                         frame_transformers.factory._get_search_region(job_properties, (100, 200)))
+
+
+    def test_search_region_mixed(self):
+        job_properties = {}
+
+        self.assertEqual(mpf_util.Rect(0, 0, 640, 480),
+                         frame_transformers.factory._get_search_region(job_properties, (640, 480)))
+
+        job_properties['SEARCH_REGION_TOP_LEFT_X_DETECTION'] = '50'
+        self.assertEqual(mpf_util.Rect(50, 0, 590, 480),
+                         frame_transformers.factory._get_search_region(job_properties, (640, 480)))
+
+        job_properties['SEARCH_REGION_BOTTOM_RIGHT_X_DETECTION'] = '70%'
+        self.assertEqual(mpf_util.Rect(50, 0, 398, 480),
+                         frame_transformers.factory._get_search_region(job_properties, (640, 480)))
+
+
+        job_properties['SEARCH_REGION_TOP_LEFT_Y_DETECTION'] = '20.8%'
+        self.assertEqual(mpf_util.Rect(50, 99, 398, 381),
+                         frame_transformers.factory._get_search_region(job_properties, (640, 480)))
+
+
+        job_properties['SEARCH_REGION_BOTTOM_RIGHT_Y_DETECTION'] = '200'
+        self.assertEqual(mpf_util.Rect(50, 99, 398, 101),
+                         frame_transformers.factory._get_search_region(job_properties, (640, 480)))
 
 
 
