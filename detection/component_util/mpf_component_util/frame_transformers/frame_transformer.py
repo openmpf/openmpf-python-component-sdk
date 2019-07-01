@@ -28,6 +28,8 @@ from __future__ import division, print_function
 
 import abc
 
+import mpf_component_util as mpf_util
+
 
 class IFrameTransformer(object):
     __metaclass__ = abc.ABCMeta
@@ -48,7 +50,7 @@ class IFrameTransformer(object):
 
 class NoOpTransformer(IFrameTransformer):
     def __init__(self, frame_size):
-        self.__frame_size = frame_size
+        self.__frame_size = mpf_util.Size.as_size(frame_size)
 
     def get_frame_size(self, frame_index):
         return self.__frame_size

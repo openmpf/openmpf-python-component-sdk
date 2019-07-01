@@ -26,5 +26,4 @@
 
 from . import frame_transformer_factory as factory
 from .frame_transformer import NoOpTransformer
-
-
+from .search_region import SearchRegion, RegionEdge
