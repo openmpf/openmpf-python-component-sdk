@@ -196,7 +196,7 @@ class _AffineTransformation(object):
     @staticmethod
     def __get_all_corners(regions):
         # Matrix containing each regions 4 corners. First row is x coordinate and second row is y coordinate.
-        return np.hstack(_AffineTransformation.__get_corners(region, rot) for region, rot, _ in regions)
+        return np.hstack([_AffineTransformation.__get_corners(region, rot) for region, rot, _ in regions])
 
     @staticmethod
     def __get_corners(region, rotation):
