@@ -36,11 +36,10 @@ logger = mpf.configure_logging('audio-ripper.log', __name__ == '__main__')
 
 def transcode_to_wav(filepath, start_time=0, stop_time=None):
     """
-    Rips the audio from from start_time to stop_time in video_path and writes
-    it to audio_path (a .wav file)
+    Transcodes the audio contained in filepath (can be an audio or video file)
+    from from start_time to stop_time to WAVE format using ffmpeg, and returns it as a byte string (read from a BytesIO object).
 
-    :param video_path: The path to the video file (video_job.data_uri).
-    :param audio_path: The path at which to save the audio.
+    :param filepath: The path to the file (job.data_uri).
     :param start_time: The time (in milliseconds) associated with the beginning of audio segment. Default 0.
     :param stop_time: The time (in milliseconds) associated with the end of the audio segment. To go to the end of the file, pass None. Default None.
     """
@@ -101,10 +100,10 @@ def transcode_to_wav(filepath, start_time=0, stop_time=None):
         else:
             raise err
 
-    # Wait for ffmpeg to complete, get stderr
+    # Wait for ffmpeg to complete, get stdout and stderr
     p_out, p_err = proc.communicate()
 
-    # If we get a nonzero exit status, raise exception for it
+    # If we get a nonzero exit status, raise exception
     exit_code = proc.returncode
     if exit_code != 0:
         error_msg = 'The ffmpeg process exited '
@@ -122,12 +121,12 @@ def transcode_to_wav(filepath, start_time=0, stop_time=None):
     elif len(p_out) == 0:
         error_msg = "The ffmpeg process exited without error, but failed to produce any audio data."
         logger.error(error_msg)
-        raise EnvironmentError(exit_code, error_msg)
+        raise ValueError(error_msg)
 
     p_out = bytearray(p_out)
 
     # If WAVE headers are not fixed, downstream processors may refuse to read
-    #  data, as the file appears to be invalid (maximum wav data size)
+    #  the data, as the file appears to be invalid (maximum wav data size)
     fix_wav_headers(p_out)
 
     bytes_io = BytesIO(p_out)
