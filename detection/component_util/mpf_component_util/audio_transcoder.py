@@ -44,7 +44,7 @@ def transcode_to_wav(filepath, start_time=0, stop_time=None):
     :param stop_time: The time (in milliseconds) associated with the end of the audio segment. To go to the end of the file, pass None. Default None.
     """
     logger.info((
-            'Reading and transcoding audio in {filepath:s} to WAVE format'
+            'Reading and transcoding audio in {filepath:s} to WAVE format.'
         ).format(
             filepath=filepath,
         )
@@ -66,9 +66,9 @@ def transcode_to_wav(filepath, start_time=0, stop_time=None):
     #  through ffmpeg. Therefore, we perform the transcoding with ffmpeg
     #  directly, and only use pydub to fix headers in the output bytes.
     command = ['ffmpeg', '-i', filepath]
-    if start_time:
+    if start_time and start_time > 0:
         command += ['-ss', str(start_time/1000.0)]  # Audio clip start time
-    if stop_time:
+    if stop_time and stop_time > 0:
         command += ['-to', str(stop_time/1000.0)]   # Audio clip end time
     command += [
         '-ac', '1',                                 # Channels
