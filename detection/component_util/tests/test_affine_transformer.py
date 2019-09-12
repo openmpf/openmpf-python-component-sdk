@@ -92,6 +92,7 @@ class TestAffineTransformer(unittest.TestCase):
 
 
     def assert_image_color(self, img, color):
+        # Color of pixels along edges gets blended with nearby pixels during interpolation.
         rows, cols = img.shape[:2]
         for row in xrange(1, rows):
             for col in xrange(1, cols):
@@ -120,6 +121,7 @@ class TestAffineTransformer(unittest.TestCase):
         num_white = count_matching_pixels(transformed_img, (255, 255, 255))
 
         area = width * height
+        # Color of pixels along edges gets blended with nearby pixels during interpolation.
         self.assertGreaterEqual(num_white, area - height - width)
         self.assertLessEqual(num_white, area)
 
@@ -139,8 +141,6 @@ class TestAffineTransformer(unittest.TestCase):
             transformed_img = transformer.transform_frame(img, 0)
 
             num_white = count_matching_pixels(transformed_img, (255, 255, 255))
-            # self.assertGreaterEqual(num_white, size.area - size.width - size.height)
-            # self.assertLessEqual(num_white, size.area)
             self.assertEqual(num_white, size.area)
 
             if rotation in (90, 270):
@@ -198,6 +198,7 @@ class TestAffineTransformer(unittest.TestCase):
 
             frame = next(mpf_util.VideoCapture(job))
             actual_num_blue = count_matching_pixels(frame, (255, 0, 0))
+            # Color of pixels along edges gets blended with nearby pixels during interpolation.
             self.assertLessEqual(actual_num_blue, expected_max_num_blue)
             self.assertGreaterEqual(actual_num_blue, expected_min_num_blue)
 

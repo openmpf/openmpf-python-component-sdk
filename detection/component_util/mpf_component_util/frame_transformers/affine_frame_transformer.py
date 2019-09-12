@@ -128,14 +128,22 @@ class _AffineTransformation(object):
         move_search_region_to_origin = _IndividualXForms.translation(-search_region_rect.x, -search_region_rect.y)
 
         if flip:
+            #          -x     x=0     +x
+            # initial: [     ] | [ a b ]
+            # flipped: [ b a ] | [     ]
+            # shift:   [     ] | [ b a ]
             flip_mat = _IndividualXForms.horizontal_flip()
             flip_shift_correction = _IndividualXForms.translation(mapped_bounding_rect.width - 1, 0)
+            # Transformations are applied from right to left, so rotation occurs first.
             combined_transform = reduce(
                 np.matmul,
                 (move_search_region_to_origin, flip_shift_correction, flip_mat, move_roi_to_origin, rotation_mat))
         else:
+            # Transformations are applied from right to left, so rotation occurs first.
             combined_transform = reduce(np.matmul, (move_search_region_to_origin, move_roi_to_origin, rotation_mat))
 
+        # When combining transformations the 3d version must be used,
+        # but when mapping 2d points the last row of the matrix can be dropped.
         combined_2d_transform = combined_transform[:2, :3]
         self.__reverse_transformation_matrix = cv2.invertAffineTransform(combined_2d_transform)
 
@@ -195,7 +203,7 @@ class _AffineTransformation(object):
 
     @staticmethod
     def __get_all_corners(regions):
-        # Matrix containing each regions 4 corners. First row is x coordinate and second row is y coordinate.
+        # Matrix containing each region's 4 corners. First row is x coordinate and second row is y coordinate.
         return np.hstack([_AffineTransformation.__get_corners(region, rot) for region, rot, _ in regions])
 
     @staticmethod
