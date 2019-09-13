@@ -125,15 +125,21 @@ class TestImageReader(unittest.TestCase):
 
         self.assertEqual((200, 320), mpf_util.Size.from_frame(image))
         self.assertTrue(test_util.is_all_black(image[300:, :30]))
-        self._assert_reverse_transform(image_reader, (0, 300, 30, 20), (300, 170, 20, 30))
+        self._assert_reverse_transform(image_reader, (0, 300, 30, 20), (300, 199, 30, 20, 90))
 
 
 
     def _assert_reverse_transform(self, image_reader, pre_transform_values, post_transform_values):
         il = mpf.ImageLocation(*pre_transform_values)
-        expected_il = mpf.ImageLocation(*post_transform_values)
         image_reader.reverse_transform(il)
-        self.assertEqual(expected_il, il)
+        self.assertEqual(il.x_left_upper, post_transform_values[0])
+        self.assertEqual(il.y_left_upper, post_transform_values[1])
+        self.assertEqual(il.width, post_transform_values[2])
+        self.assertEqual(il.height, post_transform_values[3])
+
+        expected_rotation = post_transform_values[4] if len(post_transform_values) > 4 else 0
+        actual_rotation = mpf_util.get_property(il.detection_properties, 'ROTATION', 0.0)
+        self.assertTrue(mpf_util.rotation_angles_equal(expected_rotation, actual_rotation))
 
 
     def test_combined(self):
@@ -150,59 +156,11 @@ class TestImageReader(unittest.TestCase):
         component = ImageReaderMixinComponent(self)
         results = list(component.get_detections_from_image(job))
         self.assertEqual(4, len(results))
-        self.assertEqual((300, 170, 20, 30), mpf_util.Rect.from_image_location(results[0]))
-        self.assertEqual((220, 120, 20, 30), mpf_util.Rect.from_image_location(results[1]))
-        self.assertEqual((300, 120, 20, 30), mpf_util.Rect.from_image_location(results[2]))
-        self.assertEqual((220, 170, 20, 30), mpf_util.Rect.from_image_location(results[3]))
+        self.assertEqual((319, 170, 30, 20), mpf_util.Rect.from_image_location(results[0]))
+        self.assertEqual((239, 120, 30, 20), mpf_util.Rect.from_image_location(results[1]))
+        self.assertEqual((319, 120, 30, 20), mpf_util.Rect.from_image_location(results[2]))
+        self.assertEqual((239, 170, 30, 20), mpf_util.Rect.from_image_location(results[3]))
 
-
-    def test_search_region_percentage(self):
-        job_properties = {}
-
-        self.assertEqual(mpf_util.Rect(0, 0, 100, 200),
-                         frame_transformers.factory._get_search_region(job_properties, (100, 200)))
-
-        job_properties['SEARCH_REGION_TOP_LEFT_X_DETECTION'] = '50%'
-
-        self.assertEqual(mpf_util.Rect(50, 0, 50, 200),
-                         frame_transformers.factory._get_search_region(job_properties, (100, 200)))
-
-        job_properties['SEARCH_REGION_BOTTOM_RIGHT_X_DETECTION'] = '75%'
-        self.assertEqual(mpf_util.Rect(50, 0, 25, 200),
-                         frame_transformers.factory._get_search_region(job_properties, (100, 200)))
-
-        job_properties['SEARCH_REGION_TOP_LEFT_Y_DETECTION'] = '10%'
-        self.assertEqual(mpf_util.Rect(50, 20, 25, 180),
-                         frame_transformers.factory._get_search_region(job_properties, (100, 200)))
-
-        job_properties['SEARCH_REGION_BOTTOM_RIGHT_Y_DETECTION'] = '30%'
-        self.assertEqual(mpf_util.Rect(50, 20, 25, 40),
-                         frame_transformers.factory._get_search_region(job_properties, (100, 200)))
-
-
-    def test_search_region_mixed(self):
-        job_properties = {}
-
-        self.assertEqual(mpf_util.Rect(0, 0, 640, 480),
-                         frame_transformers.factory._get_search_region(job_properties, (640, 480)))
-
-        job_properties['SEARCH_REGION_TOP_LEFT_X_DETECTION'] = '50'
-        self.assertEqual(mpf_util.Rect(50, 0, 590, 480),
-                         frame_transformers.factory._get_search_region(job_properties, (640, 480)))
-
-        job_properties['SEARCH_REGION_BOTTOM_RIGHT_X_DETECTION'] = '70%'
-        self.assertEqual(mpf_util.Rect(50, 0, 398, 480),
-                         frame_transformers.factory._get_search_region(job_properties, (640, 480)))
-
-
-        job_properties['SEARCH_REGION_TOP_LEFT_Y_DETECTION'] = '20.8%'
-        self.assertEqual(mpf_util.Rect(50, 99, 398, 381),
-                         frame_transformers.factory._get_search_region(job_properties, (640, 480)))
-
-
-        job_properties['SEARCH_REGION_BOTTOM_RIGHT_Y_DETECTION'] = '200'
-        self.assertEqual(mpf_util.Rect(50, 99, 398, 101),
-                         frame_transformers.factory._get_search_region(job_properties, (640, 480)))
 
 
 

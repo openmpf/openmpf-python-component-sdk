@@ -61,6 +61,18 @@ def dict_values_ordered_by_key(dict_):
 
 
 
+def normalize_angle(angle):
+    if 0 <= angle < 360:
+        return angle
+    angle %= 360
+    if angle >= 0:
+        return angle
+    return 360 + angle
+
+def rotation_angles_equal(a1, a2, epsilon=0.1):
+    return abs(normalize_angle(a1) - normalize_angle(a2)) < epsilon
+
+
 
 Point = collections.namedtuple('Point', ('x', 'y'))
 
@@ -72,6 +84,14 @@ class Size(collections.namedtuple('Size', ('width', 'height'))):
     def from_frame(frame):
         height, width, _ = frame.shape
         return Size(width, height)
+
+    @property
+    def area(self):
+        return self.width * self.height
+
+    @staticmethod
+    def as_size(obj):
+        return obj if isinstance(obj, Size) else Size(*obj)
 
 
 
