@@ -33,27 +33,41 @@ import os
 class ModelsIniParser(object):
     def __init__(self, plugin_models_dir):
         self._plugin_models_dir = plugin_models_dir
-        self._fields = {}
-        self._path_fields = set()
+        self._fields = []
 
-    def register_field(self, name, type_=str):
-        self._fields[name] = type_
+    def register_field(self, name, field_type=str):
+        self._fields.append(_FieldInfo(name, field_type, False))
         return self
+
+    def register_optional_field(self, name, default_value=None, field_type=str):
+        self._fields.append(_FieldInfo(name, field_type, True, default_value))
+        return self
+
 
     def register_int_field(self, name):
         return self.register_field(name, int)
 
+    def register_optional_int_field(self, name, default_value=None):
+        return self.register_optional_field(name, default_value, int)
+
+
     def register_float_field(self, name):
         return self.register_field(name, float)
 
+    def register_optional_float_field(self, name, default_value=None):
+        return self.register_optional_field(name, default_value, float)
+
     def register_path_field(self, name):
-        self._path_fields.add(name)
+        self._fields.append(_PathFieldInfo(name, None, False))
+        return self
+
+    def register_optional_path_field(self, name, default_value=None):
+        self._fields.append(_PathFieldInfo(name, None, True, default_value))
         return self
 
     def build_class(self):
         plugin_models_dir = self._plugin_models_dir
-        fields = dict(self._fields)
-        path_fields = set(self._path_fields)
+        fields = list(self._fields)
 
         class ModelSettings(object):
             def __init__(self, model_name, common_models_dir):
@@ -61,20 +75,17 @@ class ModelsIniParser(object):
                 models_ini_full_path = _get_full_path('models.ini', plugin_models_dir, common_models_dir)
                 config.read(models_ini_full_path)
 
-                try:
-                    for field_name, field_type in fields.iteritems():
-                        raw_field_value = config.get(model_name, field_name)
-                        setattr(self, field_name, field_type(raw_field_value))
-
-                    for field_name in path_fields:
-                        raw_field_value = config.get(model_name, field_name)
-                        if len(raw_field_value) == 0:
-                            raise ModelEmptyPathError(models_ini_full_path, model_name, field_name)
-                        setattr(self, field_name,
-                                _get_full_path(raw_field_value, plugin_models_dir, common_models_dir))
-                except ConfigParser.NoSectionError:
-                    raise ModelNotFoundError(models_ini_full_path, model_name, config.sections())
-
+                for field_info in fields:
+                    try:
+                        field_info.set_field(config, model_name, self, plugin_models_dir, common_models_dir)
+                    except ConfigParser.NoSectionError:
+                        raise ModelNotFoundError(models_ini_full_path, model_name, config.sections())
+                    except ConfigParser.NoOptionError:
+                        raise ModelMissingRequiredFieldError(models_ini_full_path, model_name, field_info.name)
+                    except _PathEmptyError:
+                        raise ModelEmptyPathError(models_ini_full_path, model_name, field_info.name)
+                    except _TypeConversionError as e:
+                        raise ModelTypeConversionError(models_ini_full_path, model_name, field_info.name, e.message)
         return ModelSettings
 
 
@@ -94,6 +105,53 @@ def _get_full_path(file_name, plugin_models_dir, common_models_dir):
 
 def _expand_path(path, *paths):
     return os.path.expandvars(os.path.expanduser(os.path.join(path, *paths)))
+
+
+class _FieldInfo(object):
+    def __init__(self, name, field_type, is_optional, default_value=None):
+        self.name = name
+        self._field_type = field_type
+        self._is_optional = is_optional
+        self._default_value = default_value
+
+
+    def set_field(self, config, model_name, model_settings, plugin_models_dir, common_models_dir):
+        if not self._is_optional or config.has_option(model_name, self.name):
+            try:
+                string_value = config.get(model_name, self.name)
+                converted_value = self.convert_value(string_value, plugin_models_dir, common_models_dir)
+            except ValueError as e:
+                raise _TypeConversionError(e.message)
+        else:
+            converted_value = self.convert_default_value(self._default_value, plugin_models_dir, common_models_dir)
+
+        setattr(model_settings, self.name, converted_value)
+
+
+    def convert_value(self, string_value, plugin_models_dir, common_models_dir):
+        return self._field_type(string_value)
+
+    @staticmethod
+    def convert_default_value(value, plugin_models_dir, common_models_dir):
+        return value
+
+
+class _PathFieldInfo(_FieldInfo):
+    def convert_value(self, string_value, plugin_models_dir, common_models_dir):
+        if len(string_value) == 0:
+            raise _PathEmptyError()
+        return _get_full_path(string_value, plugin_models_dir, common_models_dir)
+
+    @staticmethod
+    def convert_default_value(value, plugin_models_dir, common_models_dir):
+        return _get_full_path(value, plugin_models_dir, common_models_dir) if value else value
+
+
+class _PathEmptyError(Exception):
+    pass
+
+class _TypeConversionError(Exception):
+    pass
 
 
 
@@ -117,8 +175,19 @@ class ModelEmptyPathError(ModelsIniError):
     def __init__(self, models_ini_path, model_name, field_name):
         super(ModelEmptyPathError, self).__init__(
             'Failed to the load the requested model named "%s", '
-            'because the "%s" field was empty in the configuration file located at "%s"'
-            % (model_name, field_name, models_ini_path))
+            'because the "%s" field was empty in the [%s] section of the configuration file located at "%s"'
+            % (model_name, field_name, model_name, models_ini_path))
+        self.models_ini_path = models_ini_path
+        self.model_name = model_name
+        self.field_name = field_name
+
+
+class ModelMissingRequiredFieldError(ModelsIniError):
+    def __init__(self, models_ini_path, model_name, field_name):
+        super(ModelMissingRequiredFieldError, self).__init__(
+            'Failed to the load the requested model named "%s", '
+            'because the "%s" field was not present in the [%s] section of the configuration file located at "%s"'
+            % (model_name, field_name, model_name, models_ini_path))
         self.models_ini_path = models_ini_path
         self.model_name = model_name
         self.field_name = field_name
@@ -130,3 +199,16 @@ class ModelFileNotFoundError(IOError, ModelsIniError):
             'Failed to load model because a required file was not present. '
             'Expected a file to exist at one of the following locations: %s' % (possible_locations,))
         self.possible_locations = possible_locations
+
+
+class ModelTypeConversionError(ModelsIniError):
+    def __init__(self, models_ini_path, model_name, field_name, reason):
+        super(ModelTypeConversionError, self).__init__(
+            'Failed to the load the requested model named "%s", '
+            'because the "%s" field in the [%s] section of the configuration file located at "%s" was not able to '
+            'be converted to the specified type due to: %s'
+            % (model_name, field_name, model_name, models_ini_path, reason))
+        self.models_ini_path = models_ini_path
+        self.model_name = model_name
+        self.field_name = field_name
+        self.reason = reason

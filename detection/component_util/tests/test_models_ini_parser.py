@@ -51,6 +51,9 @@ path_field=other_file.txt
 string_field=hello world
 int_field=5
 path_field=
+
+[missing fields model]
+string_field=hello world
 """
 
 
@@ -122,18 +125,27 @@ class ModelsIniParserTest(unittest.TestCase):
 
 
     def test_prefers_common_models_dir(self):
-        test_file_plugin_path = os.path.join(self._plugin_models_dir, 'test_file.txt')
+        common_model_ini_content = '''
+[test model]
+string_field=string content
+int_field = 123
+path_field=other_file.txt
+        '''
+        os.mkdir(self._common_models_dir)
+        with open(os.path.join(self._common_models_dir, 'models.ini'), 'w') as f:
+            f.write(common_model_ini_content)
+
+        test_file_plugin_path = os.path.join(self._plugin_models_dir, 'other_file.txt')
         with open(os.path.join(test_file_plugin_path), 'w') as f:
             f.write('test')
 
-        os.mkdir(self._common_models_dir)
-        test_file_common_path = os.path.join(self._common_models_dir, 'test_file.txt')
+        test_file_common_path = os.path.join(self._common_models_dir, 'other_file.txt')
         with open(os.path.join(test_file_common_path), 'w') as f:
             f.write('test')
 
         model_settings = self._ModelSettings('test model', self._common_models_dir)
-        self.assertEqual('hello world', model_settings.string_field)
-        self.assertEqual(567, model_settings.int_field)
+        self.assertEqual('string content', model_settings.string_field)
+        self.assertEqual(123, model_settings.int_field)
         self.assertEqual(test_file_common_path, model_settings.path_field)
 
 
@@ -146,7 +158,7 @@ class ModelsIniParserTest(unittest.TestCase):
             self._ModelSettings('not a model', self._common_models_dir)
 
         self.assertEqual('not a model', err.exception.requested_model)
-        self.assertItemsEqual(('test model', 'other model', 'empty path model'),
+        self.assertItemsEqual(('test model', 'other model', 'empty path model', 'missing fields model'),
                               err.exception.available_models)
 
     def test_empty_path(self):
@@ -157,3 +169,61 @@ class ModelsIniParserTest(unittest.TestCase):
         self.assertEqual('path_field', err.exception.field_name)
 
 
+    def test_throws_when_missing_required_field(self):
+        with self.assertRaises(mpf_util.ModelMissingRequiredFieldError):
+            self._ModelSettings('missing fields model', self._common_models_dir)
+
+
+    def test_uses_values_from_ini_file_when_field_is_optional_and_in_ini_file(self):
+        test_file_path = os.path.join(self._plugin_models_dir, 'test_file.txt')
+        with open(os.path.join(test_file_path), 'w') as f:
+            f.write('test')
+
+        model_settings = (mpf_util.ModelsIniParser(self._plugin_models_dir)
+                          .register_optional_field('string_field')
+                          .register_optional_int_field('int_field', 100)
+                          .register_optional_path_field('path_field')
+                          .build_class()('test model', self._common_models_dir))
+
+        self.assertEqual('hello world', model_settings.string_field)
+        self.assertEqual(567, model_settings.int_field)
+        self.assertEqual(test_file_path, model_settings.path_field)
+
+
+    def test_can_handle_missing_fields_when_optional(self):
+        model_settings = (mpf_util.ModelsIniParser(self._plugin_models_dir)
+                          .register_optional_field('string_field')
+                          .register_optional_int_field('int_field', 100)
+                          .register_optional_path_field('path_field')
+                          .build_class()('missing fields model', self._common_models_dir))
+
+        self.assertEqual('hello world', model_settings.string_field)
+        self.assertEqual(100, model_settings.int_field)
+        self.assertEqual(None, model_settings.path_field)
+
+
+    def test_validates_default_value_for_optional_path(self):
+        ModelSettings = (mpf_util.ModelsIniParser(self._plugin_models_dir)
+                         .register_optional_field('string_field', 'asdf')
+                         .register_optional_int_field('int_field', 100)
+                         .register_optional_path_field('path_field', 'test_file.txt')
+                         .build_class())
+
+        with self.assertRaises(mpf_util.ModelFileNotFoundError):
+            ModelSettings('missing fields model', self._common_models_dir)
+
+        test_file_path = os.path.join(self._plugin_models_dir, 'test_file.txt')
+        with open(os.path.join(test_file_path), 'w') as f:
+            f.write('test')
+
+        model_settings = ModelSettings('missing fields model', self._common_models_dir)
+        self.assertEqual('hello world', model_settings.string_field)
+        self.assertEqual(100, model_settings.int_field)
+        self.assertEqual(test_file_path, model_settings.path_field)
+
+
+    def test_throws_when_type_conversion_fails(self):
+        with self.assertRaises(mpf_util.ModelTypeConversionError):
+            (mpf_util.ModelsIniParser(self._plugin_models_dir)
+                .register_int_field('string_field')
+                .build_class()('test model', self._common_models_dir))
