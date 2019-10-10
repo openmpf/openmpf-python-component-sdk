@@ -223,7 +223,7 @@ path_field=other_file.txt
 
 
     def test_throws_when_type_conversion_fails(self):
-        with self.assertRaises(mpf_util.ModelTypeConversionFailed):
+        with self.assertRaises(mpf_util.ModelTypeConversionError):
             (mpf_util.ModelsIniParser(self._plugin_models_dir)
                 .register_int_field('string_field')
                 .build_class()('test model', self._common_models_dir))

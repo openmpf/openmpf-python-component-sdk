@@ -85,7 +85,7 @@ class ModelsIniParser(object):
                     except _PathEmptyError:
                         raise ModelEmptyPathError(models_ini_full_path, model_name, field_info.name)
                     except _TypeConversionError as e:
-                        raise ModelTypeConversionFailed(models_ini_full_path, model_name, field_info.name, e.message)
+                        raise ModelTypeConversionError(models_ini_full_path, model_name, field_info.name, e.message)
         return ModelSettings
 
 
@@ -201,9 +201,9 @@ class ModelFileNotFoundError(IOError, ModelsIniError):
         self.possible_locations = possible_locations
 
 
-class ModelTypeConversionFailed(ModelsIniError):
+class ModelTypeConversionError(ModelsIniError):
     def __init__(self, models_ini_path, model_name, field_name, reason):
-        super(ModelTypeConversionFailed, self).__init__(
+        super(ModelTypeConversionError, self).__init__(
             'Failed to the load the requested model named "%s", '
             'because the "%s" field in the [%s] section of the configuration file located at "%s" was not able to '
             'be converted to the specified type due to: %s'
@@ -211,3 +211,4 @@ class ModelTypeConversionFailed(ModelsIniError):
         self.models_ini_path = models_ini_path
         self.model_name = model_name
         self.field_name = field_name
+        self.reason = reason
