@@ -24,12 +24,11 @@
 # limitations under the License.                                            #
 #############################################################################
 
-from __future__ import division, print_function
+import cv2
 
 from . import frame_transformers
 from . import utils
 import mpf_component_api as mpf
-import cv2
 
 
 class ImageReader(object):
@@ -71,5 +70,3 @@ class ImageReaderMixin(object):
 
     def get_detections_from_image_reader(self, image_job, image_reader):
         raise NotImplementedError()
-
-

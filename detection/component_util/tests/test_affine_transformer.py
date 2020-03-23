@@ -24,20 +24,20 @@
 # limitations under the License.                                            #
 #############################################################################
 
-from __future__ import division, print_function
-
-import test_util
+from . import test_util
 test_util.add_local_component_libs_to_sys_path()
 
 import unittest
+
+import cv2
+import numpy as np
+
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 from mpf_component_util.frame_transformers.affine_frame_transformer import AffineFrameTransformer
 from mpf_component_util.frame_transformers.frame_transformer import NoOpTransformer
 from mpf_component_util.frame_transformers import frame_transformer_factory, SearchRegion, RegionEdge
 
-import numpy as np
-import cv2
 
 
 
@@ -94,8 +94,8 @@ class TestAffineTransformer(unittest.TestCase):
     def assert_image_color(self, img, color):
         # Color of pixels along edges gets blended with nearby pixels during interpolation.
         rows, cols = img.shape[:2]
-        for row in xrange(1, rows):
-            for col in xrange(1, cols):
+        for row in range(1, rows):
+            for col in range(1, cols):
                 self.assertTrue(np.all(closest_color(img[row, col]) == color))
 
 
@@ -184,13 +184,13 @@ class TestAffineTransformer(unittest.TestCase):
                 2: mpf.ImageLocation(260, 340, 60, 60, -1, dict(ROTATION='20'))
             }, {})
 
-        for rotation in xrange(0, 361, 20):
+        for rotation in range(0, 361, 20):
             job = mpf.VideoJob('Test', test_util.get_data_file_path('rotation/feed-forward-rotation-test.png'),
                                ff_track.start_frame, ff_track.stop_frame,
                                dict(FEED_FORWARD_TYPE='SUPERSET_REGION', ROTATION=str(rotation)), {}, ff_track)
             expected_min_num_blue = 0
             expected_max_num_blue = 0
-            for il in ff_track.frame_locations.itervalues():
+            for il in ff_track.frame_locations.values():
                 area = il.width * il.height
                 perimeter = 2 * il.width + 2 * il.height
                 expected_min_num_blue += area - perimeter
@@ -410,6 +410,3 @@ def closest_color(sample):
 
 def count_matching_pixels(img, pixel):
     return np.count_nonzero(np.all(img == pixel, axis=2))
-
-
-

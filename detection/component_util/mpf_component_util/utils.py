@@ -24,8 +24,6 @@
 # limitations under the License.                                            #
 #############################################################################
 
-from __future__ import division, print_function
-
 import collections
 import operator
 import sys
@@ -51,8 +49,8 @@ def get_property(properties, key, default_value, prop_type=None):
 
 
 
-def dict_items_ordered_by_key(dict_, cmp=None, key=None, reverse=False):
-    ordered_keys = sorted(dict_, cmp=cmp, key=key, reverse=reverse)
+def dict_items_ordered_by_key(dict_, key=None, reverse=False):
+    ordered_keys = sorted(dict_, key=key, reverse=reverse)
     return ((k, dict_[k]) for k in ordered_keys)
 
 

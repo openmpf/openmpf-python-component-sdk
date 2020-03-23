@@ -26,7 +26,7 @@
 
 from __future__ import division, print_function
 
-import ConfigParser
+import configparser
 import os
 
 
@@ -71,21 +71,21 @@ class ModelsIniParser(object):
 
         class ModelSettings(object):
             def __init__(self, model_name, common_models_dir):
-                config = ConfigParser.RawConfigParser()
+                config = configparser.RawConfigParser()
                 models_ini_full_path = _get_full_path('models.ini', plugin_models_dir, common_models_dir)
                 config.read(models_ini_full_path)
 
                 for field_info in fields:
                     try:
                         field_info.set_field(config, model_name, self, plugin_models_dir, common_models_dir)
-                    except ConfigParser.NoSectionError:
+                    except configparser.NoSectionError:
                         raise ModelNotFoundError(models_ini_full_path, model_name, config.sections())
-                    except ConfigParser.NoOptionError:
+                    except configparser.NoOptionError:
                         raise ModelMissingRequiredFieldError(models_ini_full_path, model_name, field_info.name)
                     except _PathEmptyError:
                         raise ModelEmptyPathError(models_ini_full_path, model_name, field_info.name)
                     except _TypeConversionError as e:
-                        raise ModelTypeConversionError(models_ini_full_path, model_name, field_info.name, e.message)
+                        raise ModelTypeConversionError(models_ini_full_path, model_name, field_info.name, str(e))
         return ModelSettings
 
 
@@ -121,7 +121,7 @@ class _FieldInfo(object):
                 string_value = config.get(model_name, self.name)
                 converted_value = self.convert_value(string_value, plugin_models_dir, common_models_dir)
             except ValueError as e:
-                raise _TypeConversionError(e.message)
+                raise _TypeConversionError(str(e))
         else:
             converted_value = self.convert_default_value(self._default_value, plugin_models_dir, common_models_dir)
 

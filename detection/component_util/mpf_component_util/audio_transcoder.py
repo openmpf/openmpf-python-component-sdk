@@ -23,11 +23,11 @@
 # See the License for the specific language governing permissions and       #
 # limitations under the License.                                            #
 #############################################################################
-from __future__ import print_function, division
 
+from io import BytesIO
 import os
 import subprocess
-from io import BytesIO
+
 from pydub.audio_segment import fix_wav_headers
 
 import mpf_component_api as mpf

@@ -24,10 +24,8 @@
 # limitations under the License.                                            #
 #############################################################################
 
-from __future__ import division, print_function
-
-import inspect
 import collections
+import inspect
 import os
 
 
@@ -50,12 +48,12 @@ class FieldTypes(object):
 
 
     def __call__(self, clazz):
-        for field, field_type in self.types_dict.iteritems():
+        for field, field_type in self.types_dict.items():
             prop = FieldTypes.create_property('_' + field, field_type)
             # Add the new property to the decorated class
             setattr(clazz, field, prop)
 
-        ctor_args = [a for a in inspect.getargspec(clazz.__init__).args if a in self.types_dict]
+        ctor_args = [a for a in inspect.getfullargspec(clazz.__init__).args if a in self.types_dict]
 
         FieldTypes.add_equals_methods(clazz, ctor_args)
         FieldTypes.add_to_string_method(clazz, ctor_args)
@@ -142,7 +140,7 @@ class EnumMeta(type):
         super(EnumMeta, cls).__init__(name, bases, class_dict)
         if name == 'EnumBase':
             return
-        for key, value in class_dict.iteritems():
+        for key, value in class_dict.items():
             if key.startswith('_') or not isinstance(value, EnumValueTag):
                 continue
             enum_element = cls(key, value.int_val)
@@ -160,7 +158,7 @@ class EnumMeta(type):
 
     def __iter__(cls):
         """Make the enum class itself iterable. Iterating over an enum class returns the individual enum elements"""
-        return (val for val in vars(cls).itervalues() if isinstance(val, cls))
+        return (val for val in vars(cls).values() if isinstance(val, cls))
 
     def __getitem__(cls, key):
         """Adds the square bracket ([]) operator to the enum class."""
@@ -181,9 +179,8 @@ class EnumMeta(type):
         return sum(1 for _ in cls)
 
 
-class EnumBase(object):
+class EnumBase(object, metaclass=EnumMeta):
     # Methods on this class are inherited by the enum elements.
-    __metaclass__ = EnumMeta
 
     def __init__(self, str_val, int_val):
         self.str_val = str_val
@@ -218,7 +215,7 @@ class EnumBase(object):
 
     @staticmethod
     def element_count(count):
-        return (EnumValueTag(i) for i in xrange(count))
+        return (EnumValueTag(i) for i in range(count))
 
 
 class EnumValueTag(object):

@@ -24,14 +24,12 @@
 # limitations under the License.                                            #
 #############################################################################
 
-from __future__ import division, print_function
-
-from . import frame_filter
-from .. import utils
-
 import bisect
 import subprocess
 import sys
+
+from . import frame_filter
+from .. import utils
 
 
 class _FrameListFilter(frame_filter.FrameFilter):
@@ -86,53 +84,54 @@ class KeyFrameFilter(_FrameListFilter):
         command = ('ffprobe', '-loglevel', 'warning', '-select_streams', 'v', '-show_entries', 'frame=key_frame',
                    '-print_format', 'flat=h=0', video_job.data_uri)
         try:
-            proc = subprocess.Popen(command, stdout=subprocess.PIPE)
+            proc = subprocess.Popen(command, text=True, stdout=subprocess.PIPE)
         except OSError as err:
             if err.errno == 2:
                 raise EnvironmentError(err.errno, 'ffprobe does not appear to be installed')
             else:
                 raise
 
-        key_frames = []
-        num_key_frames_seen = 0
-        frame_interval = max(1, utils.get_property(video_job.job_properties, 'FRAME_INTERVAL', 1))
-        stop_frame = video_job.stop_frame
-        if stop_frame < 0:
-            stop_frame = float('inf')
+        with proc:
+            key_frames = []
+            num_key_frames_seen = 0
+            frame_interval = max(1, utils.get_property(video_job.job_properties, 'FRAME_INTERVAL', 1))
+            stop_frame = video_job.stop_frame
+            if stop_frame < 0:
+                stop_frame = float('inf')
 
-        for line in proc.stdout:
-            # Expected line format for key frame: frame.209.key_frame=1
-            # Expected line format for non-key frame: frame.210.key_frame=0
-            if not line.startswith(KeyFrameFilter.LINE_PREFIX):
-                print('Expected each line of output from ffprobe to start with "%s"' 
-                      'but the following line was found "%s"' % (KeyFrameFilter.LINE_PREFIX, line), file=sys.stderr)
-                continue
+            for line in proc.stdout:
+                # Expected line format for key frame: frame.209.key_frame=1
+                # Expected line format for non-key frame: frame.210.key_frame=0
+                if not line.startswith(KeyFrameFilter.LINE_PREFIX):
+                    print('Expected each line of output from ffprobe to start with "%s"' 
+                          'but the following line was found "%s"' % (KeyFrameFilter.LINE_PREFIX, line), file=sys.stderr)
+                    continue
 
-            line_parts = line.split('.')
-            frame_number = int(line_parts[1])
-            if frame_number < video_job.start_frame:
-                continue
+                line_parts = line.split('.')
+                frame_number = int(line_parts[1])
+                if frame_number < video_job.start_frame:
+                    continue
 
-            if frame_number > stop_frame:
-                proc.terminate()
+                if frame_number > stop_frame:
+                    proc.terminate()
+                    return key_frames
+
+                if 'key_frame=1' not in line_parts[2]:
+                    continue
+
+                if num_key_frames_seen % frame_interval == 0:
+                    key_frames.append(frame_number)
+                num_key_frames_seen += 1
+
+            exit_code = proc.wait()
+            if exit_code == 0:
                 return key_frames
 
-            if 'key_frame=1' not in line_parts[2]:
-                continue
-
-            if num_key_frames_seen % frame_interval == 0:
-                key_frames.append(frame_number)
-            num_key_frames_seen += 1
-
-        exit_code = proc.wait()
-        if exit_code == 0:
-            return key_frames
-
-        error_msg = 'The ffprobe process '
-        if exit_code > 0:
-            error_msg += 'exited with exit code: %s.' % exit_code
-        else:
-            # When exit code is negative, it is the number of the signal that caused the process exit.
-            error_msg += 'exited due to signal number: %s.' % (-1 * exit_code)
-            exit_code = 128 - exit_code
-        raise EnvironmentError(exit_code, error_msg)
+            error_msg = 'The ffprobe process '
+            if exit_code > 0:
+                error_msg += 'exited with exit code: %s.' % exit_code
+            else:
+                # When exit code is negative, it is the number of the signal that caused the process exit.
+                error_msg += 'exited due to signal number: %s.' % (-1 * exit_code)
+                exit_code = 128 - exit_code
+            raise EnvironmentError(exit_code, error_msg)

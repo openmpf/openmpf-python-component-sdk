@@ -24,13 +24,10 @@
 # limitations under the License.                                            #
 #############################################################################
 
-from __future__ import division, print_function
-
 import abc
 
 
-class FrameFilter(object):
-    __metaclass__ = abc.ABCMeta
+class FrameFilter(abc.ABC):
 
     @abc.abstractmethod
     def segment_to_original_frame_position(self, segment_position):

@@ -26,8 +26,9 @@
 
 from __future__ import division, print_function
 
-import test_util
+from . import test_util
 test_util.add_local_component_libs_to_sys_path()
+
 import unittest
 import tempfile
 import shutil
@@ -112,7 +113,7 @@ class ModelsIniParserTest(unittest.TestCase):
         with open(os.path.join(other_file_path), 'w') as f:
             f.write('test')
 
-        for i in xrange(2):
+        for i in range(2):
             model_settings = self._ModelSettings('test model', self._common_models_dir)
             self.assertEqual('hello world', model_settings.string_field)
             self.assertEqual(567, model_settings.int_field)
@@ -158,8 +159,8 @@ path_field=other_file.txt
             self._ModelSettings('not a model', self._common_models_dir)
 
         self.assertEqual('not a model', err.exception.requested_model)
-        self.assertItemsEqual(('test model', 'other model', 'empty path model', 'missing fields model'),
-                              err.exception.available_models)
+        self.assertSetEqual({'test model', 'other model', 'empty path model', 'missing fields model'},
+                            set(err.exception.available_models))
 
     def test_empty_path(self):
         with self.assertRaises(mpf_util.ModelEmptyPathError) as err:

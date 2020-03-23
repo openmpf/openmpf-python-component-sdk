@@ -24,15 +24,14 @@
 # limitations under the License.                                            #
 #############################################################################
 
-from __future__ import division, print_function
+import sys
+
+import cv2
 
 from . import frame_filters
 from . import frame_transformers
 from . import utils
 import mpf_component_api as mpf
-
-import cv2
-import sys
 
 
 class VideoCapture(object):
@@ -80,7 +79,7 @@ class VideoCapture(object):
     def __iter__(self):
         return self
 
-    def next(self):
+    def __next__(self):
         was_read, frame = self.read()
         if was_read:
             return frame
@@ -196,7 +195,7 @@ class VideoCapture(object):
         video_track.stop_frame = self.__frame_filter.segment_to_original_frame_position(video_track.stop_frame)
 
         new_frame_locations = mpf.FrameLocationMap()
-        for frame_pos, image_loc in video_track.frame_locations.iteritems():
+        for frame_pos, image_loc in video_track.frame_locations.items():
             self.__frame_transformer.reverse_transform(image_loc, frame_pos)
 
             fixed_frame_index = self.__frame_filter.segment_to_original_frame_position(frame_pos)
@@ -227,7 +226,7 @@ class VideoCapture(object):
             return ()
 
         initialization_frames = []
-        for i in xrange(num_frames_to_get):
+        for i in range(num_frames_to_get):
             was_read, frame = self.read()
             if was_read:
                 initialization_frames.append(frame)

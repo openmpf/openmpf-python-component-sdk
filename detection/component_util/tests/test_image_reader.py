@@ -26,13 +26,12 @@
 
 from __future__ import division, print_function
 
-import test_util
+from . import test_util
 test_util.add_local_component_libs_to_sys_path()
 
 import unittest
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
-import mpf_component_util.frame_transformers as frame_transformers
 
 
 def images_equal(im1, im2):

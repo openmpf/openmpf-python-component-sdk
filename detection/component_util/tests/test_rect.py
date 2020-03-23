@@ -26,8 +26,9 @@
 
 from __future__ import division, print_function
 
-import test_util
+from . import test_util
 test_util.add_local_component_libs_to_sys_path()
+
 import unittest
 import mpf_component_util as mpf_util
 
@@ -122,4 +123,3 @@ class TestRect(unittest.TestCase):
         intersection = rect1.intersection(rect2)
         self.assertEqual(intersection, rect2.intersection(rect1))
         self.assertEqual(intersection, rect1)
-
