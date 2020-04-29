@@ -24,6 +24,7 @@
 # limitations under the License.                                            #
 #############################################################################
 
+import enum
 import logging
 import logging.handlers
 import sys
@@ -116,36 +117,37 @@ class GenericJob(NamedTuple):
     feed_forward_track: Optional[GenericTrack] = None
 
 
-class DetectionError(util.EnumBase):
-    (
-        DETECTION_SUCCESS,
-        OTHER_DETECTION_ERROR_TYPE,
-        DETECTION_NOT_INITIALIZED,
-        UNRECOGNIZED_DATA_TYPE,
-        UNSUPPORTED_DATA_TYPE,
-        INVALID_DATAFILE_URI,
-        COULD_NOT_OPEN_DATAFILE,
-        COULD_NOT_READ_DATAFILE,
-        FILE_WRITE_ERROR,
-        IMAGE_READ_ERROR,
-        BAD_FRAME_SIZE,
-        BOUNDING_BOX_SIZE_ERROR,
-        INVALID_FRAME_INTERVAL,
-        INVALID_START_FRAME,
-        INVALID_STOP_FRAME,
-        DETECTION_FAILED,
-        DETECTION_TRACKING_FAILED,
-        INVALID_PROPERTY,
-        MISSING_PROPERTY,
-        PROPERTY_IS_NOT_INT,
-        PROPERTY_IS_NOT_FLOAT,
-        INVALID_ROTATION,
-        MEMORY_ALLOCATION_FAILED,
-        GPU_ERROR
-    ) = util.EnumBase.element_count(24)
+@enum.unique
+class DetectionError(enum.IntEnum):
+    DETECTION_SUCCESS = 0
+    OTHER_DETECTION_ERROR_TYPE = 1
+    DETECTION_NOT_INITIALIZED = 2
+    UNRECOGNIZED_DATA_TYPE = 3
+    UNSUPPORTED_DATA_TYPE = 4
+    INVALID_DATAFILE_URI = 5
+    COULD_NOT_OPEN_DATAFILE = 6
+    COULD_NOT_READ_DATAFILE = 7
+    FILE_WRITE_ERROR = 8
+    IMAGE_READ_ERROR = 9
+    BAD_FRAME_SIZE = 10
+    BOUNDING_BOX_SIZE_ERROR = 11
+    INVALID_FRAME_INTERVAL = 12
+    INVALID_START_FRAME = 13
+    INVALID_STOP_FRAME = 14
+    DETECTION_FAILED = 15
+    DETECTION_TRACKING_FAILED = 16
+    INVALID_PROPERTY = 17
+    MISSING_PROPERTY = 18
+    PROPERTY_IS_NOT_INT = 19
+    PROPERTY_IS_NOT_FLOAT = 20
+    INVALID_ROTATION = 21
+    MEMORY_ALLOCATION_FAILED = 22
+    GPU_ERROR = 23
 
 
 class DetectionException(Exception):
+    error_code: DetectionError
+
     def __init__(self, message, error_code=DetectionError.OTHER_DETECTION_ERROR_TYPE, *args):
         super(DetectionException, self).__init__(message, error_code, *args)
         if isinstance(error_code, DetectionError):
