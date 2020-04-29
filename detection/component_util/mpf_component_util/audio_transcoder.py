@@ -115,7 +115,7 @@ def transcode_to_wav(filepath, start_time=0, stop_time=None):
             error_msg += 'due to signal number: {c:d}.'.format(c=-exit_code)
             exit_code = 128 - exit_code
         if p_err:
-            error_msg += ' Error message: {e:s}'.format(e=p_err)
+            error_msg += ' Error message: {e:s}'.format(e=p_err.decode('utf-8'))
         logger.error(error_msg)
         raise EnvironmentError(exit_code, error_msg)
     elif len(p_out) == 0:

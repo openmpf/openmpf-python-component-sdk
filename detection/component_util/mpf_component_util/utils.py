@@ -24,9 +24,14 @@
 # limitations under the License.                                            #
 #############################################################################
 
-import collections
 import operator
 import sys
+from typing import NamedTuple, Sequence, Union, Tuple
+
+import numpy as np
+
+import mpf_component_api as mpf
+
 
 
 def get_property(properties, key, default_value, prop_type=None):
@@ -71,26 +76,35 @@ def rotation_angles_equal(a1, a2, epsilon=0.1):
     return abs(normalize_angle(a1) - normalize_angle(a2)) < epsilon
 
 
+IntOrFloat = Union[int, float]
 
-Point = collections.namedtuple('Point', ('x', 'y'))
+class Point(NamedTuple):
+    x: IntOrFloat
+    y: IntOrFloat
 
 
-class Size(collections.namedtuple('Size', ('width', 'height'))):
-    __slots__ = ()
+_PointLike = Union[Point, Tuple[IntOrFloat, IntOrFloat], Sequence[IntOrFloat]]
 
-    @staticmethod
-    def from_frame(frame):
-        height, width, _ = frame.shape
-        return Size(width, height)
+
+class Size(NamedTuple):
+    width: IntOrFloat
+    height: IntOrFloat
 
     @property
-    def area(self):
+    def area(self) -> IntOrFloat:
         return self.width * self.height
 
     @staticmethod
-    def as_size(obj):
+    def from_frame(frame: np.ndarray) -> 'Size':
+        height, width, _ = frame.shape
+        return Size(width, height)
+
+    @staticmethod
+    def as_size(obj: '_SizeLike') -> 'Size':
         return obj if isinstance(obj, Size) else Size(*obj)
 
+
+_SizeLike = Union[Size, Tuple[IntOrFloat, IntOrFloat], Sequence[IntOrFloat]]
 
 
 def element_wise_op(op, obj1, obj2, target_type=None):
@@ -99,30 +113,33 @@ def element_wise_op(op, obj1, obj2, target_type=None):
     return target_type(*(op(v1, v2) for v1, v2 in zip(obj1, obj2)))
 
 
-class Rect(collections.namedtuple('Rect', ('x', 'y', 'width', 'height'))):
-    __slots__ = ()
+class Rect(NamedTuple):
+    x: IntOrFloat
+    y: IntOrFloat
+    width: IntOrFloat
+    height: IntOrFloat
 
     @property
-    def br(self):
+    def br(self) -> Point:
         return Point(self.x + self.width, self.y + self.height)
 
     @property
-    def tl(self):
+    def tl(self) -> Point:
         return Point(self.x, self.y)
 
     @property
-    def empty(self):
+    def empty(self) -> bool:
         return self.area <= 0
 
     @property
-    def area(self):
+    def area(self) -> IntOrFloat:
         return self.width * self.height
 
     @property
-    def size(self):
+    def size(self) -> Size:
         return Size(self.width, self.height)
 
-    def union(self, other):
+    def union(self, other: '_RectLike') -> 'Rect':
         other = Rect.__rectify(other)
 
         if self.empty:
@@ -135,7 +152,7 @@ class Rect(collections.namedtuple('Rect', ('x', 'y', 'width', 'height'))):
                 element_wise_op(max, self.br, other.br))
 
 
-    def intersection(self, other):
+    def intersection(self, other: '_RectLike') -> 'Rect':
         other = Rect.__rectify(other)
 
         top_left = element_wise_op(max, self.tl, other.tl)
@@ -147,23 +164,23 @@ class Rect(collections.namedtuple('Rect', ('x', 'y', 'width', 'height'))):
 
 
     @staticmethod
-    def from_corners(point1, point2):
+    def from_corners(point1: _PointLike, point2: _PointLike) -> 'Rect':
         top_left = element_wise_op(min, point1, point2, Point)
         bottom_right = element_wise_op(max, point1, point2, Point)
         dist = element_wise_op(operator.sub, bottom_right, top_left, Size)
         return Rect.from_corner_and_size(top_left, dist)
 
     @staticmethod
-    def from_corner_and_size(top_left_point, size):
+    def from_corner_and_size(top_left_point: _PointLike, size: _SizeLike):
         return Rect(top_left_point[0], top_left_point[1], size[0], size[1])
 
     @staticmethod
-    def from_image_location(image_location):
+    def from_image_location(image_location: mpf.ImageLocation):
         return Rect(image_location.x_left_upper, image_location.y_left_upper, image_location.width,
                     image_location.height)
 
     @staticmethod
-    def __rectify(obj):
+    def __rectify(obj) -> 'Rect':
         if isinstance(obj, Rect):
             return obj
         if len(obj) == 4:
@@ -176,3 +193,12 @@ class Rect(collections.namedtuple('Rect', ('x', 'y', 'width', 'height'))):
             if isinstance(obj2, Size):
                 return Rect.from_corner_and_size(obj1, obj2)
         raise TypeError('Could not convert argument %s to Rect.' % (obj,))
+
+
+_RectLike = Union[
+    Rect,
+    Tuple[IntOrFloat, IntOrFloat, IntOrFloat, IntOrFloat],
+    Sequence[IntOrFloat],
+    Tuple[_PointLike, Size],
+    Tuple[_PointLike, Point]
+]

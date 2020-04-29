@@ -24,15 +24,15 @@
 # limitations under the License.                                            #
 #############################################################################
 
-import collections
 import logging
 import logging.handlers
 import sys
+from typing import Mapping, MutableMapping, NamedTuple, Optional
 
 from . import mpf_component_api_util as util
 
 
-class Properties(util.TypedDict):
+class Properties(util.TypedDict, MutableMapping[str, str]):
     key_type = str
     value_type = str
 
@@ -49,7 +49,7 @@ class ImageLocation(object):
         self.detection_properties = util.create_if_none(detection_properties, Properties)
 
 
-class FrameLocationMap(util.TypedDict):
+class FrameLocationMap(util.TypedDict, MutableMapping[int, ImageLocation]):
     key_type = int
     value_type = ImageLocation
 
@@ -81,18 +81,39 @@ class GenericTrack(object):
         self.detection_properties = util.create_if_none(detection_properties, Properties)
 
 
+class VideoJob(NamedTuple):
+    job_name: str
+    data_uri: str
+    start_frame: int
+    stop_frame: int
+    job_properties: Mapping[str, str]
+    media_properties: Mapping[str, str]
+    feed_forward_track: Optional[VideoTrack] = None
 
-VideoJob = collections.namedtuple('VideoJob', ('job_name', 'data_uri', 'start_frame', 'stop_frame',
-                                               'job_properties', 'media_properties', 'feed_forward_track'))
+class ImageJob(NamedTuple):
+    job_name: str
+    data_uri: str
+    job_properties: Mapping[str, str]
+    media_properties: Mapping[str, str]
+    feed_forward_location: Optional[ImageLocation]
 
-ImageJob = collections.namedtuple('ImageJob', ('job_name', 'data_uri', 'job_properties', 'media_properties',
-                                               'feed_forward_location'))
 
-AudioJob = collections.namedtuple('AudioJob', ('job_name', 'data_uri', 'start_time', 'stop_time',
-                                               'job_properties', 'media_properties', 'feed_forward_track'))
+class AudioJob(NamedTuple):
+    job_name: str
+    data_uri: str
+    start_time: int
+    stop_time: int
+    job_properties: Mapping[str, str]
+    media_properties: Mapping[str, str]
+    feed_forward_track: Optional[AudioTrack] = None
 
-GenericJob = collections.namedtuple('GenericJob', ('job_name', 'data_uri', 'job_properties', 'media_properties',
-                                                   'feed_forward_track'))
+
+class GenericJob(NamedTuple):
+    job_name: str
+    data_uri: str
+    job_properties: Mapping[str, str]
+    media_properties: Mapping[str, str]
+    feed_forward_track: Optional[GenericTrack] = None
 
 
 class DetectionError(util.EnumBase):

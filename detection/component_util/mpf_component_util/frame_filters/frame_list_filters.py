@@ -27,6 +27,7 @@
 import bisect
 import subprocess
 import sys
+from typing import List
 
 from . import frame_filter
 from .. import utils
@@ -92,7 +93,7 @@ class KeyFrameFilter(_FrameListFilter):
                 raise
 
         with proc:
-            key_frames = []
+            key_frames: List[int] = []
             num_key_frames_seen = 0
             frame_interval = max(1, utils.get_property(video_job.job_properties, 'FRAME_INTERVAL', 1))
             stop_frame = video_job.stop_frame

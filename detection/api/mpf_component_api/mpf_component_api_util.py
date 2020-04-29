@@ -27,6 +27,7 @@
 import collections
 import inspect
 import os
+from typing import ClassVar, Type
 
 
 def type_converter(obj, class_or_factory):
@@ -102,8 +103,8 @@ class TypedDict(collections.MutableMapping):
     Behaves identically to a regular dict, except when inserting new items.
     When inserting new items the types of the key and value are checked.
     """
-    key_type = object
-    value_type = object
+    key_type: ClassVar[Type] = object
+    value_type: ClassVar[Type] = object
 
     def __init__(self, *args, **kwargs):
         super(TypedDict, self).__init__()

@@ -28,6 +28,7 @@ from __future__ import division, print_function
 
 import configparser
 import os
+from typing import Collection
 
 
 class ModelsIniParser(object):
@@ -92,7 +93,7 @@ class ModelsIniParser(object):
 def _get_full_path(file_name, plugin_models_dir, common_models_dir):
     file_name = _expand_path(file_name)
     if file_name[0] == '/':
-        possible_locations = (file_name,)
+        possible_locations: Collection[str] = (file_name,)
     else:
         possible_locations = (_expand_path(common_models_dir, file_name), _expand_path(plugin_models_dir, file_name))
 
