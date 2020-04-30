@@ -28,7 +28,7 @@ import enum
 import logging
 import logging.handlers
 import sys
-from typing import Mapping, MutableMapping, NamedTuple, Optional
+from typing import Any, Mapping, MutableMapping, NamedTuple, Optional
 
 from . import mpf_component_api_util as util
 
@@ -144,11 +144,17 @@ class DetectionError(enum.IntEnum):
     MEMORY_ALLOCATION_FAILED = 22
     GPU_ERROR = 23
 
+    def exception(self, message: str) -> 'DetectionException':
+        return DetectionException(message, self)
+
 
 class DetectionException(Exception):
     error_code: DetectionError
 
-    def __init__(self, message, error_code=DetectionError.OTHER_DETECTION_ERROR_TYPE, *args):
+    def __init__(self,
+                 message: str,
+                 error_code: DetectionError = DetectionError.OTHER_DETECTION_ERROR_TYPE,
+                 *args: Any) -> None:
         super(DetectionException, self).__init__(message, error_code, *args)
         if isinstance(error_code, DetectionError):
             self.error_code = error_code
@@ -157,7 +163,7 @@ class DetectionException(Exception):
 
 
 
-def configure_logging(log_file_name, debug=False):
+def configure_logging(log_file_name: str, debug: bool = False) -> logging.Logger:
     # Change default level names to match what WFM expects
     # Change default level name for logger.warn and logger.warning from 'WARNING' to 'WARN'
     logging.addLevelName(logging.WARN, 'WARN')

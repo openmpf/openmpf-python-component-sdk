@@ -111,7 +111,7 @@ def _add_feed_forward_transforms_if_needed(job_properties, media_properties, tra
     regions = []
     for detection in detections.values():
         has_detection_level_rotation = 'ROTATION' in detection.detection_properties
-        rotation = 0
+        rotation = 0.0
         if has_detection_level_rotation:
             rotation = utils.normalize_angle(float(detection.detection_properties['ROTATION']))
         elif has_track_level_rotation:

@@ -57,7 +57,7 @@ class TestComponent(object):
 
         error_code = image_job.job_properties.get('raise_exception', None)
         if error_code is not None:
-            raise mpf.DetectionException('Exception Message', mpf.DetectionError[int(error_code)])
+            raise mpf.DetectionException('Exception Message', mpf.DetectionError(int(error_code)))
 
         yield mpf.ImageLocation(10, 20, 12, 34, -1,
                                 {'METADATA': 'extra info for second result',

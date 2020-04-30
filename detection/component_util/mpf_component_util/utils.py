@@ -26,15 +26,21 @@
 
 import operator
 import sys
-from typing import NamedTuple, Sequence, Union, Tuple
+import typing
+from typing import Any, Callable, Iterator, Mapping, NamedTuple, Optional, Sequence, Tuple, Union, TypeVar
 
 import numpy as np
 
 import mpf_component_api as mpf
 
 
+T = TypeVar('T')
 
-def get_property(properties, key, default_value, prop_type=None):
+def get_property(
+        properties: Mapping[str, str],
+        key: str,
+        default_value: T,
+        prop_type: Optional[Callable[[str], T]] = None) -> T:
     if key not in properties:
         return default_value
 
@@ -43,7 +49,7 @@ def get_property(properties, key, default_value, prop_type=None):
 
     value = properties[key]
     if prop_type is bool:
-        return value.upper() == 'TRUE'
+        return typing.cast(T, value.upper() == 'TRUE')
 
     try:
         return prop_type(value)
@@ -53,18 +59,23 @@ def get_property(properties, key, default_value, prop_type=None):
         return default_value
 
 
+TKey = TypeVar('TKey')
+TVal = TypeVar('TVal')
 
-def dict_items_ordered_by_key(dict_, key=None, reverse=False):
+def dict_items_ordered_by_key(
+        dict_: Mapping[TKey, TVal],
+        key: Optional[Callable[[TKey], Any]] = None,
+        reverse: bool = False) -> Iterator[Tuple[TKey, TVal]]:
     ordered_keys = sorted(dict_, key=key, reverse=reverse)
     return ((k, dict_[k]) for k in ordered_keys)
 
 
-def dict_values_ordered_by_key(dict_):
+def dict_values_ordered_by_key(dict_: Mapping[TKey, TVal]) -> Iterator[TVal]:
     return (v for k, v in dict_items_ordered_by_key(dict_))
 
 
 
-def normalize_angle(angle):
+def normalize_angle(angle: float) -> float:
     if 0 <= angle < 360:
         return angle
     angle %= 360
@@ -72,7 +83,7 @@ def normalize_angle(angle):
         return angle
     return 360 + angle
 
-def rotation_angles_equal(a1, a2, epsilon=0.1):
+def rotation_angles_equal(a1: float, a2: float, epsilon=0.1) -> bool:
     return abs(normalize_angle(a1) - normalize_angle(a2)) < epsilon
 
 

@@ -24,45 +24,45 @@
 # limitations under the License.                                            #
 #############################################################################
 
-from __future__ import division, print_function
-
 import configparser
 import os
-from typing import Collection
+from typing import Any, Collection, Callable, List, Optional
 
 
 class ModelsIniParser(object):
-    def __init__(self, plugin_models_dir):
+    def __init__(self, plugin_models_dir: str):
         self._plugin_models_dir = plugin_models_dir
-        self._fields = []
+        self._fields: List[_FieldInfo] = []
 
-    def register_field(self, name, field_type=str):
+    def register_field(self, name: str, field_type: Callable[[str], Any] = str) -> 'ModelsIniParser':
         self._fields.append(_FieldInfo(name, field_type, False))
         return self
 
-    def register_optional_field(self, name, default_value=None, field_type=str):
+    def register_optional_field(self, name: str, default_value=None, field_type: Callable[[str], Any] = str) \
+            -> 'ModelsIniParser':
         self._fields.append(_FieldInfo(name, field_type, True, default_value))
         return self
 
 
-    def register_int_field(self, name):
+    def register_int_field(self, name: str) -> 'ModelsIniParser':
         return self.register_field(name, int)
 
-    def register_optional_int_field(self, name, default_value=None):
+    def register_optional_int_field(self, name: str, default_value: Optional[int] = None):
         return self.register_optional_field(name, default_value, int)
 
 
-    def register_float_field(self, name):
+    def register_float_field(self, name: str) -> 'ModelsIniParser':
         return self.register_field(name, float)
 
-    def register_optional_float_field(self, name, default_value=None):
+    def register_optional_float_field(self, name: str, default_value: Optional[float] = None):
         return self.register_optional_field(name, default_value, float)
 
-    def register_path_field(self, name):
+
+    def register_path_field(self, name: str) -> 'ModelsIniParser':
         self._fields.append(_PathFieldInfo(name, None, False))
         return self
 
-    def register_optional_path_field(self, name, default_value=None):
+    def register_optional_path_field(self, name: str, default_value: Optional[str] = None) -> 'ModelsIniParser':
         self._fields.append(_PathFieldInfo(name, None, True, default_value))
         return self
 
