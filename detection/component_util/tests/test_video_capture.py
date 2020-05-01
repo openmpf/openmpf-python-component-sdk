@@ -776,7 +776,7 @@ def get_filters(interval_filter_args):
 
 def to_feed_forward_filter(interval_filter):
     frame_count = interval_filter.get_segment_frame_count()
-    frame_location_map = mpf.FrameLocationMap()
+    frame_location_map = dict()
     for i in range(frame_count):
         original_pos = interval_filter.segment_to_original_frame_position(i)
         frame_location_map[original_pos] = mpf.ImageLocation(0, 0, 0, 0)

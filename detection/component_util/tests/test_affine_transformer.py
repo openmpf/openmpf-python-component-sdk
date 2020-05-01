@@ -27,6 +27,7 @@
 from . import test_util
 test_util.add_local_component_libs_to_sys_path()
 
+import typing
 import unittest
 
 import cv2
@@ -170,7 +171,8 @@ class TestAffineTransformer(unittest.TestCase):
             self.assertEqual(frame_size, (ff_detection.width, ff_detection.height))
             self.assert_image_color(frame, (255, 0, 0))
 
-            new_detection = mpf.ImageLocation(0, 0, *frame_size)
+            size_as_tuple = typing.cast(typing.Tuple[int, int], frame_size)
+            new_detection = mpf.ImageLocation(0, 0, *size_as_tuple)
             transformer.reverse_transform(new_detection, frame_number)
             self.assert_detections_same_location(new_detection, ff_detection)
 
@@ -220,7 +222,7 @@ class TestAffineTransformer(unittest.TestCase):
         self.assertTrue(mpf_util.get_property(detection.detection_properties, 'HORIZONTAL_FLIP', False))
 
         # Test with existing flip
-        detection = mpf.ImageLocation(10, 20, 40, 50, -1, dict(HORIZONTAL_FLIP=True))
+        detection = mpf.ImageLocation(10, 20, 40, 50, -1, dict(HORIZONTAL_FLIP='True'))
         transformer.reverse_transform(detection, 0)
         self.assertEqual(50, detection.x_left_upper)
         self.assertEqual(20, detection.y_left_upper)

@@ -24,62 +24,47 @@
 # limitations under the License.                                            #
 #############################################################################
 
+import dataclasses
 import enum
 import logging
 import logging.handlers
+import os
 import sys
-from typing import Any, Mapping, MutableMapping, NamedTuple, Optional
-
-from . import mpf_component_api_util as util
+from typing import Any, Mapping, NamedTuple, Optional, Dict
 
 
-class Properties(util.TypedDict, MutableMapping[str, str]):
-    key_type = str
-    value_type = str
+@dataclasses.dataclass
+class ImageLocation:
+    x_left_upper: int
+    y_left_upper: int
+    width: int
+    height: int
+    confidence: float = -1
+    detection_properties: Dict[str, str] = dataclasses.field(default_factory=dict)
 
 
-@util.FieldTypes(x_left_upper=int, y_left_upper=int, width=int, height=int, confidence=float,
-                 detection_properties=Properties)
-class ImageLocation(object):
-    def __init__(self, x_left_upper, y_left_upper, width, height, confidence=-1.0, detection_properties=None):
-        self.x_left_upper = x_left_upper
-        self.y_left_upper = y_left_upper
-        self.width = width
-        self.height = height
-        self.confidence = confidence
-        self.detection_properties = util.create_if_none(detection_properties, Properties)
+@dataclasses.dataclass
+class VideoTrack:
+    start_frame: int
+    stop_frame: int
+    confidence: float = -1
+    frame_locations: Dict[int, ImageLocation] = dataclasses.field(default_factory=dict)
+    detection_properties: Dict[str, str] = dataclasses.field(default_factory=dict)
 
 
-class FrameLocationMap(util.TypedDict, MutableMapping[int, ImageLocation]):
-    key_type = int
-    value_type = ImageLocation
+@dataclasses.dataclass
+class AudioTrack:
+    start_time: int
+    stop_time: int
+    confidence: float = -1
+    detection_properties: Dict[str, str] = dataclasses.field(default_factory=dict)
 
 
-@util.FieldTypes(start_frame=int, stop_frame=int, confidence=float, frame_locations=FrameLocationMap,
-                 detection_properties=Properties)
-class VideoTrack(object):
-    def __init__(self, start_frame, stop_frame, confidence=-1.0, frame_locations=None, detection_properties=None):
-        self.start_frame = start_frame
-        self.stop_frame = stop_frame
-        self.confidence = confidence
-        self.frame_locations = util.create_if_none(frame_locations, FrameLocationMap)
-        self.detection_properties = util.create_if_none(detection_properties, Properties)
+@dataclasses.dataclass
+class GenericTrack:
+    confidence: float = -1
+    detection_properties: Dict[str, str] = dataclasses.field(default_factory=dict)
 
-
-@util.FieldTypes(start_time=int, stop_time=int, confidence=float, detection_properties=Properties)
-class AudioTrack(object):
-    def __init__(self, start_time, stop_time, confidence, detection_properties=None):
-        self.start_time = start_time
-        self.stop_time = stop_time
-        self.confidence = confidence
-        self.detection_properties = util.create_if_none(detection_properties, Properties)
-
-
-@util.FieldTypes(confidence=float, detection_properties=Properties)
-class GenericTrack(object):
-    def __init__(self, confidence=-1.0, detection_properties=None):
-        self.confidence = confidence
-        self.detection_properties = util.create_if_none(detection_properties, Properties)
 
 
 class VideoJob(NamedTuple):
@@ -90,6 +75,7 @@ class VideoJob(NamedTuple):
     job_properties: Mapping[str, str]
     media_properties: Mapping[str, str]
     feed_forward_track: Optional[VideoTrack] = None
+
 
 class ImageJob(NamedTuple):
     job_name: str
@@ -170,16 +156,29 @@ def configure_logging(log_file_name: str, debug: bool = False) -> logging.Logger
     # Change default level name for logger.fatal and logger.critical from 'CRITICAL' to 'FATAL'
     logging.addLevelName(logging.FATAL, 'FATAL')
 
-    logger = logging.getLogger(util.get_log_name(log_file_name))
+    logger = logging.getLogger(_get_log_name(log_file_name))
     logger.propagate = False
     if debug:
         logger.setLevel(logging.DEBUG)
         handler = logging.StreamHandler(sys.stdout)
     else:
         logger.setLevel(logging.INFO)
-        handler = logging.handlers.TimedRotatingFileHandler(util.get_full_log_path(log_file_name), when='midnight')
+        handler = logging.handlers.TimedRotatingFileHandler(_get_full_log_path(log_file_name), when='midnight')
 
     # Example log line: 2018-05-03 14:41:11,703 INFO  [test_component.py:44] - Logged message
     handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)-5s [%(filename)s:%(lineno)d] - %(message)s'))
     logger.addHandler(handler)
     return logger
+
+
+def _get_full_log_path(filename):
+    log_dir = os.path.expandvars('$MPF_LOG_PATH/$THIS_MPF_NODE/log')
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    log_path = os.path.join(log_dir, filename)
+    return os.path.expandvars(log_path)
+
+
+def _get_log_name(filename):
+    log_name, _ = os.path.splitext(os.path.basename(filename if filename else ''))
+    return log_name if log_name else 'component_logger'

@@ -52,10 +52,10 @@ class OcvComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, object
 
         detection_sz = 20
         yield mpf.ImageLocation(width / 2 - detection_sz, 0, detection_sz, height - 1, -1.0,
-                                mpf.Properties(METADATA='full_height'))
+                                dict(METADATA='full_height'))
 
         yield mpf.ImageLocation(0, 0, width / 4, height / 4, -1,
-                                mpf.Properties(METADATA='top left corner, .25 width and .25 height of image'))
+                                dict(METADATA='top left corner, .25 width and .25 height of image'))
 
 
 
@@ -66,7 +66,7 @@ class OcvComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, object
 
         width, height = video_capture.frame_size
 
-        detections = mpf.FrameLocationMap()
+        detections = dict()
         expand_rate = 5
         last_il = mpf.ImageLocation(0, 0, 1, 1)
         last_frame_read = 0

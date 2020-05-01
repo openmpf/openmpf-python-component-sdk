@@ -197,7 +197,7 @@ class VideoCapture(Iterable[np.ndarray]):
         video_track.start_frame = self.__frame_filter.segment_to_original_frame_position(video_track.start_frame)
         video_track.stop_frame = self.__frame_filter.segment_to_original_frame_position(video_track.stop_frame)
 
-        new_frame_locations = mpf.FrameLocationMap()
+        new_frame_locations = dict()
         for frame_pos, image_loc in video_track.frame_locations.items():
             self.__frame_transformer.reverse_transform(image_loc, frame_pos)
 
