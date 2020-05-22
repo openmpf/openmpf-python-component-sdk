@@ -51,9 +51,10 @@ Using this API, detection components can be built to provide:
 ## Getting Started
 
 ### Build and Install the Component SDK
-* If not already installed, install [pip](https://pip.pypa.io).
-* Install the Python Component API: `pip install openmpf-python-component-sdk/detection/api`
-* (Optional) Install the Python Component Utilities: `pip install openmpf-python-component-sdk/detection/component_util`
+* If not already installed, 
+  [build and install Python 3.8.](https://openmpf.github.io/docs/site/Development-Environment-Guide#python-38)
+* Install the Python Component API: `pip3 install openmpf-python-component-sdk/detection/api`
+* (Optional) Install the Python Component Utilities: `pip3 install openmpf-python-component-sdk/detection/component_util`
 
 ### Using the Component SDK
 
