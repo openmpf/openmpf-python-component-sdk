@@ -24,14 +24,12 @@
 # limitations under the License.                                            #
 #############################################################################
 
-from __future__ import division, print_function
-
-import test_util
+from . import test_util
 test_util.add_local_component_libs_to_sys_path()
 
-import cv2
-import itertools
 import unittest
+
+import cv2
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
@@ -286,7 +284,7 @@ class FrameFilterTest(unittest.TestCase):
 
         self.assertEqual(len(expected_frames), cap.frame_count)
         num_read = 0
-        for expected_frame_idx, frame in itertools.izip(expected_frames, cap):
+        for expected_frame_idx, frame in zip(expected_frames, cap):
             num_read += 1
             self.assertEqual(expected_frame_idx, get_frame_number(frame))
 
@@ -296,12 +294,12 @@ class FrameFilterTest(unittest.TestCase):
 
     def test_no_frames_skipped_when_filter_params_provided_but_frame_filtering_disabled(self):
         cap = mpf_util.VideoCapture(create_video_job(0, 1, 3), True, False)
-        self.assert_expected_frames_shown(cap, xrange(30))
+        self.assert_expected_frames_shown(cap, range(30))
 
 
     def test_no_frames_skipped_when_default_values(self):
         cap = create_video_capture(0, 29)
-        self.assert_expected_frames_shown(cap, xrange(30))
+        self.assert_expected_frames_shown(cap, range(30))
 
 
     def test_can_handle_start_stop_frame(self):
@@ -401,7 +399,7 @@ class FrameFilterTest(unittest.TestCase):
         init_frames = cap.get_initialization_frames_if_available(num_requested)
         self.assertEqual(len(expected_init_frames), len(init_frames))
 
-        for expected_index, frames in itertools.izip(expected_init_frames, init_frames):
+        for expected_index, frames in zip(expected_init_frames, init_frames):
             self.assertEqual(expected_index, get_frame_number(frames))
 
 
@@ -778,8 +776,8 @@ def get_filters(interval_filter_args):
 
 def to_feed_forward_filter(interval_filter):
     frame_count = interval_filter.get_segment_frame_count()
-    frame_location_map = mpf.FrameLocationMap()
-    for i in xrange(frame_count):
+    frame_location_map = dict()
+    for i in range(frame_count):
         original_pos = interval_filter.segment_to_original_frame_position(i)
         frame_location_map[original_pos] = mpf.ImageLocation(0, 0, 0, 0)
 

@@ -24,44 +24,45 @@
 # limitations under the License.                                            #
 #############################################################################
 
-from __future__ import division, print_function
-
-import ConfigParser
+import configparser
 import os
+from typing import Any, Collection, Callable, List, Optional
 
 
 class ModelsIniParser(object):
-    def __init__(self, plugin_models_dir):
+    def __init__(self, plugin_models_dir: str):
         self._plugin_models_dir = plugin_models_dir
-        self._fields = []
+        self._fields: List[_FieldInfo] = []
 
-    def register_field(self, name, field_type=str):
+    def register_field(self, name: str, field_type: Callable[[str], Any] = str) -> 'ModelsIniParser':
         self._fields.append(_FieldInfo(name, field_type, False))
         return self
 
-    def register_optional_field(self, name, default_value=None, field_type=str):
+    def register_optional_field(self, name: str, default_value=None, field_type: Callable[[str], Any] = str) \
+            -> 'ModelsIniParser':
         self._fields.append(_FieldInfo(name, field_type, True, default_value))
         return self
 
 
-    def register_int_field(self, name):
+    def register_int_field(self, name: str) -> 'ModelsIniParser':
         return self.register_field(name, int)
 
-    def register_optional_int_field(self, name, default_value=None):
+    def register_optional_int_field(self, name: str, default_value: Optional[int] = None):
         return self.register_optional_field(name, default_value, int)
 
 
-    def register_float_field(self, name):
+    def register_float_field(self, name: str) -> 'ModelsIniParser':
         return self.register_field(name, float)
 
-    def register_optional_float_field(self, name, default_value=None):
+    def register_optional_float_field(self, name: str, default_value: Optional[float] = None):
         return self.register_optional_field(name, default_value, float)
 
-    def register_path_field(self, name):
+
+    def register_path_field(self, name: str) -> 'ModelsIniParser':
         self._fields.append(_PathFieldInfo(name, None, False))
         return self
 
-    def register_optional_path_field(self, name, default_value=None):
+    def register_optional_path_field(self, name: str, default_value: Optional[str] = None) -> 'ModelsIniParser':
         self._fields.append(_PathFieldInfo(name, None, True, default_value))
         return self
 
@@ -71,28 +72,28 @@ class ModelsIniParser(object):
 
         class ModelSettings(object):
             def __init__(self, model_name, common_models_dir):
-                config = ConfigParser.RawConfigParser()
+                config = configparser.RawConfigParser()
                 models_ini_full_path = _get_full_path('models.ini', plugin_models_dir, common_models_dir)
                 config.read(models_ini_full_path)
 
                 for field_info in fields:
                     try:
                         field_info.set_field(config, model_name, self, plugin_models_dir, common_models_dir)
-                    except ConfigParser.NoSectionError:
+                    except configparser.NoSectionError:
                         raise ModelNotFoundError(models_ini_full_path, model_name, config.sections())
-                    except ConfigParser.NoOptionError:
+                    except configparser.NoOptionError:
                         raise ModelMissingRequiredFieldError(models_ini_full_path, model_name, field_info.name)
                     except _PathEmptyError:
                         raise ModelEmptyPathError(models_ini_full_path, model_name, field_info.name)
                     except _TypeConversionError as e:
-                        raise ModelTypeConversionError(models_ini_full_path, model_name, field_info.name, e.message)
+                        raise ModelTypeConversionError(models_ini_full_path, model_name, field_info.name, str(e))
         return ModelSettings
 
 
 def _get_full_path(file_name, plugin_models_dir, common_models_dir):
     file_name = _expand_path(file_name)
     if file_name[0] == '/':
-        possible_locations = (file_name,)
+        possible_locations: Collection[str] = (file_name,)
     else:
         possible_locations = (_expand_path(common_models_dir, file_name), _expand_path(plugin_models_dir, file_name))
 
@@ -121,7 +122,7 @@ class _FieldInfo(object):
                 string_value = config.get(model_name, self.name)
                 converted_value = self.convert_value(string_value, plugin_models_dir, common_models_dir)
             except ValueError as e:
-                raise _TypeConversionError(e.message)
+                raise _TypeConversionError(str(e))
         else:
             converted_value = self.convert_default_value(self._default_value, plugin_models_dir, common_models_dir)
 

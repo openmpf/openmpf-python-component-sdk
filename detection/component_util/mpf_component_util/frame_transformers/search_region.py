@@ -24,10 +24,7 @@
 # limitations under the License.                                            #
 #############################################################################
 
-from __future__ import division, print_function
-
-import mpf_component_util as mpf_util
-
+from .. import utils
 
 class RegionEdge(object):
     # Used when a value was not provided for an edge.
@@ -72,9 +69,9 @@ class SearchRegion(object):
 
 
     def get_rect(self, frame_size):
-        frame_size = mpf_util.Size.as_size(frame_size)
+        frame_size = utils.Size.as_size(frame_size)
         left_value = self.__left(0, frame_size.width)
         top_value = self.__top(0, frame_size.height)
         right_value = self.__right(frame_size.width, frame_size.width)
         bottom_value = self.__bottom(frame_size.height, frame_size.height)
-        return mpf_util.Rect.from_corners((left_value, top_value), (right_value, bottom_value))
+        return utils.Rect.from_corners((left_value, top_value), (right_value, bottom_value))

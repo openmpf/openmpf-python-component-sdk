@@ -24,15 +24,12 @@
 # limitations under the License.                                            #
 #############################################################################
 
-from __future__ import division, print_function
-
 import abc
 
-import mpf_component_util as mpf_util
+from .. import utils
 
 
-class IFrameTransformer(object):
-    __metaclass__ = abc.ABCMeta
+class IFrameTransformer(abc.ABC):
 
     @abc.abstractmethod
     def transform_frame(self, frame, frame_index):
@@ -50,7 +47,7 @@ class IFrameTransformer(object):
 
 class NoOpTransformer(IFrameTransformer):
     def __init__(self, frame_size):
-        self.__frame_size = mpf_util.Size.as_size(frame_size)
+        self.__frame_size = utils.Size.as_size(frame_size)
 
     def get_frame_size(self, frame_index):
         return self.__frame_size
@@ -63,7 +60,7 @@ class NoOpTransformer(IFrameTransformer):
 
 
 
-class BaseDecoratedFrameTransformer(IFrameTransformer):
+class BaseDecoratedFrameTransformer(IFrameTransformer, abc.ABC):
     """
     This class implements both a decorator pattern (the design pattern not Python decorators) and a template
     method pattern. The decorator pattern is used to make it possible to combine any number of frame transformers.
@@ -72,7 +69,6 @@ class BaseDecoratedFrameTransformer(IFrameTransformer):
     occurs in the opposite order, so the subclass's reverseTransform is called first, then the inner
     reverse_transform occurs.
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, inner_transform):
         self.__inner_transform = inner_transform
@@ -126,4 +122,3 @@ class BaseDecoratedFrameTransformer(IFrameTransformer):
         :param frame_index: 0-based index of the frame's position in video or 0 if frame is from image.
         """
         raise NotImplementedError()
-

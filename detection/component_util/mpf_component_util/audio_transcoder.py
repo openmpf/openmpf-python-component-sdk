@@ -23,18 +23,19 @@
 # See the License for the specific language governing permissions and       #
 # limitations under the License.                                            #
 #############################################################################
-from __future__ import print_function, division
 
+from io import BytesIO
 import os
 import subprocess
-from io import BytesIO
+from typing import Optional
+
 from pydub.audio_segment import fix_wav_headers
 
 import mpf_component_api as mpf
 
 logger = mpf.configure_logging('audio-ripper.log', __name__ == '__main__')
 
-def transcode_to_wav(filepath, start_time=0, stop_time=None):
+def transcode_to_wav(filepath: str, start_time: float = 0, stop_time: Optional[float] = None) -> bytes:
     """
     Transcodes the audio contained in filepath (can be an audio or video file)
     from from start_time to stop_time to WAVE format using ffmpeg, and returns it as a byte string (read from a BytesIO object).
@@ -115,7 +116,7 @@ def transcode_to_wav(filepath, start_time=0, stop_time=None):
             error_msg += 'due to signal number: {c:d}.'.format(c=-exit_code)
             exit_code = 128 - exit_code
         if p_err:
-            error_msg += ' Error message: {e:s}'.format(e=p_err)
+            error_msg += ' Error message: {e:s}'.format(e=p_err.decode('utf-8'))
         logger.error(error_msg)
         raise EnvironmentError(exit_code, error_msg)
     elif len(p_out) == 0:

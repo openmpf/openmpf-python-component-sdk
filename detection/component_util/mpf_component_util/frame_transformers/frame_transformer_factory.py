@@ -28,8 +28,8 @@ from __future__ import division, print_function
 
 import sys
 
-from .frame_transformer import NoOpTransformer
 from .affine_frame_transformer import AffineFrameTransformer, FeedForwardExactRegionAffineTransformer
+from .frame_transformer import NoOpTransformer
 from .frame_cropper import FeedForwardFrameCropper, SearchRegionFrameCropper
 from .search_region import SearchRegion, RegionEdge
 from .. import utils
@@ -109,9 +109,9 @@ def _add_feed_forward_transforms_if_needed(job_properties, media_properties, tra
     requires_rotation_or_flip = False
     is_exact_region_mode = _feed_forward_exact_region_is_enabled(job_properties)
     regions = []
-    for detection in detections.itervalues():
+    for detection in detections.values():
         has_detection_level_rotation = 'ROTATION' in detection.detection_properties
-        rotation = 0
+        rotation = 0.0
         if has_detection_level_rotation:
             rotation = utils.normalize_angle(float(detection.detection_properties['ROTATION']))
         elif has_track_level_rotation:

@@ -24,10 +24,9 @@
 # limitations under the License.                                            #
 #############################################################################
 
-from __future__ import division, print_function
+import sys
 
 import cv2
-import sys
 
 
 # For certain videos cv2.VideoCapture.set(cv2.CAP_PROP_POS_FRAMES, int) # does not work properly.
@@ -65,7 +64,7 @@ class _SequentialSeek(object):
         num_frames_to_discard = requested_position - start
 
         num_success = 0
-        for i in xrange(num_frames_to_discard):
+        for i in range(num_frames_to_discard):
             if self._advance(cv_video_cap):
                 num_success += 1
             else:

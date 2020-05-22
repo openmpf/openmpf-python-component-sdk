@@ -26,9 +26,12 @@
 
 from __future__ import division, print_function
 
-import test_util
+from . import test_util
 test_util.add_local_component_libs_to_sys_path()
+
 import unittest
+from typing import Tuple
+
 import mpf_component_util as mpf_util
 
 
@@ -99,7 +102,7 @@ class TestRect(unittest.TestCase):
         self.assertEqual(rect2, intersection)
 
         rect1 = mpf_util.Rect(2, 6, 5, 10)
-        rect2_args = (mpf_util.Point(4, 3), mpf_util.Point(10, 12))
+        rect2_args: Tuple = (mpf_util.Point(4, 3), mpf_util.Point(10, 12))
         intersection = rect1.intersection(rect2_args)
         self.assertEqual(intersection, mpf_util.Rect.from_corners(*rect2_args).intersection(rect1))
         self.assertEqual((4, 6, 3, 6), intersection)
@@ -122,4 +125,3 @@ class TestRect(unittest.TestCase):
         intersection = rect1.intersection(rect2)
         self.assertEqual(intersection, rect2.intersection(rect1))
         self.assertEqual(intersection, rect1)
-

@@ -24,19 +24,22 @@
 # limitations under the License.                                            #
 #############################################################################
 
-from __future__ import division, print_function
+import abc
+import sys
+from typing import Iterable, Tuple, Optional, Sequence
+
+import cv2
+import numpy as np
 
 from . import frame_filters
 from . import frame_transformers
 from . import utils
 import mpf_component_api as mpf
 
-import cv2
-import sys
 
-
-class VideoCapture(object):
-    def __init__(self, video_job, enable_frame_transformers=True, enable_frame_filtering=True):
+class VideoCapture(Iterable[np.ndarray]):
+    def __init__(self, video_job: mpf.VideoJob, enable_frame_transformers: bool = True,
+                 enable_frame_filtering: bool = True):
         """
         Initializes a new VideoCapture instance, using the frame transformers specified in job_properties,
         to be used for video processing jobs.
@@ -47,8 +50,7 @@ class VideoCapture(object):
         """
         self.__cv_video_capture = cv2.VideoCapture(video_job.data_uri)
         if not self.__cv_video_capture.isOpened():
-            raise mpf.DetectionException('Failed to open "%s".' % video_job.data_uri,
-                                         mpf.DetectionError.COULD_NOT_OPEN_DATAFILE)
+            raise mpf.DetectionError.COULD_NOT_OPEN_DATAFILE.exception('Failed to open "%s".' % video_job.data_uri)
 
         self.__frame_filter = self.__get_frame_filter(enable_frame_filtering, video_job, self.__cv_video_capture)
         self.__frame_transformer = self.__get_frame_transformer(enable_frame_transformers, video_job)
@@ -62,7 +64,7 @@ class VideoCapture(object):
         self.set_frame_position(0)
 
 
-    def read(self):
+    def read(self) -> Tuple[bool, Optional[np.ndarray]]:
         original_pos_before_read = self.__frame_position
         if self.__frame_filter.is_past_end_of_segment(original_pos_before_read):
             return False, None
@@ -77,10 +79,10 @@ class VideoCapture(object):
         return False, None
 
 
-    def __iter__(self):
+    def __iter__(self) -> 'VideoCapture':
         return self
 
-    def next(self):
+    def __next__(self) -> np.ndarray:
         was_read, frame = self.read()
         if was_read:
             return frame
@@ -88,20 +90,20 @@ class VideoCapture(object):
             raise StopIteration()
 
 
-    def is_opened(self):
+    def is_opened(self) -> bool:
         return self.__cv_video_capture.isOpened()
 
 
-    def release(self):
+    def release(self) -> None:
         self.__cv_video_capture.release()
 
 
     @property
-    def frame_count(self):
+    def frame_count(self) -> int:
         return self.__frame_filter.get_segment_frame_count()
 
 
-    def set_frame_position(self, frame_index):
+    def set_frame_position(self, frame_index: int) -> bool:
         if frame_index < 0 or frame_index >= self.__frame_filter.get_segment_frame_count():
             return False
 
@@ -110,34 +112,34 @@ class VideoCapture(object):
 
 
     @property
-    def current_frame_position(self):
+    def current_frame_position(self) -> int:
         return self.__frame_filter.original_to_segment_frame_position(self.__frame_position)
 
 
     @property
-    def frame_rate(self):
+    def frame_rate(self) -> float:
         original_frame_rate = self.__get_property(cv2.CAP_PROP_FPS)
         return self.__frame_filter.get_segment_frame_rate(original_frame_rate)
 
 
     @property
-    def frame_size(self):
+    def frame_size(self) -> utils.Size:
         return self.__frame_transformer.get_frame_size(max(0, self.current_frame_position - 1))
 
 
     @property
-    def original_frame_size(self):
+    def original_frame_size(self) -> utils.Size:
         width = int(self.__get_property(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(self.__get_property(cv2.CAP_PROP_FRAME_HEIGHT))
         return utils.Size(width, height)
 
 
     @property
-    def frame_position_ratio(self):
+    def frame_position_ratio(self) -> float:
         return self.__frame_filter.get_segment_frame_position_ratio(self.__frame_position)
 
 
-    def set_frame_position_ratio(self, position_ratio):
+    def set_frame_position_ratio(self, position_ratio: float) -> bool:
         if position_ratio < 0 or position_ratio > 1:
             return False
         frame_position = self.__frame_filter.ratio_to_original_frame_position(position_ratio)
@@ -145,18 +147,18 @@ class VideoCapture(object):
 
 
     @property
-    def current_time_in_millis(self):
+    def current_time_in_millis(self) -> float:
         original_frame_rate = self.__get_property(cv2.CAP_PROP_FPS)
         return self.__frame_filter.get_current_segment_time_in_millis(self.__frame_position, original_frame_rate)
 
 
-    def set_frame_position_in_millis(self, millis):
+    def set_frame_position_in_millis(self, millis: float) -> bool:
         original_frame_rate = self.__get_property(cv2.CAP_PROP_FPS)
         new_frame_position = self.__frame_filter.millis_to_segment_frame_position(original_frame_rate, millis)
         return self.set_frame_position(new_frame_position)
 
 
-    def get_property(self, property_id):
+    def get_property(self, property_id: int) -> float:
         if property_id == cv2.CAP_PROP_FRAME_WIDTH:
             return self.frame_size.width
         elif property_id == cv2.CAP_PROP_FRAME_HEIGHT:
@@ -173,7 +175,7 @@ class VideoCapture(object):
             return self.__get_property(property_id)
 
 
-    def set_property(self, property_id, value):
+    def set_property(self, property_id: int, value: float) -> bool:
         if property_id in (cv2.CAP_PROP_FRAME_WIDTH, cv2.CAP_PROP_FRAME_HEIGHT, cv2.CAP_PROP_FPS):
             return False
         elif property_id == cv2.CAP_PROP_POS_FRAMES:
@@ -187,16 +189,16 @@ class VideoCapture(object):
 
 
     @property
-    def four_char_codec_code(self):
+    def four_char_codec_code(self) -> int:
         return int(self.__get_property(cv2.CAP_PROP_FOURCC))
 
 
-    def reverse_transform(self, video_track):
+    def reverse_transform(self, video_track: mpf.VideoTrack) -> None:
         video_track.start_frame = self.__frame_filter.segment_to_original_frame_position(video_track.start_frame)
         video_track.stop_frame = self.__frame_filter.segment_to_original_frame_position(video_track.stop_frame)
 
-        new_frame_locations = mpf.FrameLocationMap()
-        for frame_pos, image_loc in video_track.frame_locations.iteritems():
+        new_frame_locations = dict()
+        for frame_pos, image_loc in video_track.frame_locations.items():
             self.__frame_transformer.reverse_transform(image_loc, frame_pos)
 
             fixed_frame_index = self.__frame_filter.segment_to_original_frame_position(frame_pos)
@@ -205,7 +207,7 @@ class VideoCapture(object):
         video_track.frame_locations = new_frame_locations
 
 
-    def get_initialization_frames_if_available(self, num_requested_frames):
+    def get_initialization_frames_if_available(self, num_requested_frames: int) -> Sequence[np.ndarray]:
         """
         Gets up to num_requested_frames frames before beginning of segment, skipping frame_interval frames.
         If less than num_requested_frames are available, returned list will have as many initialization frames
@@ -227,7 +229,7 @@ class VideoCapture(object):
             return ()
 
         initialization_frames = []
-        for i in xrange(num_frames_to_get):
+        for i in range(num_frames_to_get):
             was_read, frame = self.read()
             if was_read:
                 initialization_frames.append(frame)
@@ -240,12 +242,11 @@ class VideoCapture(object):
         return initialization_frames
 
 
-
-    def __get_property(self, property_id):
+    def __get_property(self, property_id: int) -> float:
         return self.__cv_video_capture.get(property_id)
 
 
-    def __set_property(self, property_id, value):
+    def __set_property(self, property_id: int, value: float) -> bool:
         return self.__cv_video_capture.set(property_id, value)
 
 
@@ -356,18 +357,16 @@ class VideoCapture(object):
 
 
 
-def video_capture_wrapper(video_job, get_detections_fn):
-    video_capture = VideoCapture(video_job)
-    results = get_detections_fn(video_job, video_capture)
-    for result in results:
-        video_capture.reverse_transform(result)
-        yield result
+class VideoCaptureMixin(abc.ABC):
 
+    def get_detections_from_video(self, video_job: mpf.VideoJob) -> Iterable[mpf.VideoTrack]:
+        video_capture = VideoCapture(video_job)
+        results = self.get_detections_from_video_capture(video_job, video_capture)
+        for result in results:
+            video_capture.reverse_transform(result)
+            yield result
 
-
-class VideoCaptureMixin(object):
-    def get_detections_from_video(self, video_job):
-        return video_capture_wrapper(video_job, self.get_detections_from_video_capture)
-
-    def get_detections_from_video_capture(self, video_job, video_capture):
+    @abc.abstractmethod
+    def get_detections_from_video_capture(self, video_job: mpf.VideoJob, video_capture: VideoCapture) \
+            -> Iterable[mpf.VideoTrack]:
         raise NotImplementedError()

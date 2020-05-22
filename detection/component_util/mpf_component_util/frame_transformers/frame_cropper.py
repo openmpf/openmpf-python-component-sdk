@@ -24,15 +24,13 @@
 # limitations under the License.                                            #
 #############################################################################
 
-from __future__ import division, print_function
-
-from . import frame_transformer
-from .. import utils
 import abc
 
+from . frame_transformer import BaseDecoratedFrameTransformer
+from .. import utils
 
-class _BaseFrameCropper(frame_transformer.BaseDecoratedFrameTransformer):
-    __metaclass__ = abc.ABCMeta
+
+class _BaseFrameCropper(BaseDecoratedFrameTransformer, abc.ABC):
 
     def get_frame_size(self, frame_index):
         return self._get_region_of_interest(frame_index).size
@@ -57,7 +55,7 @@ class _BaseFrameCropper(frame_transformer.BaseDecoratedFrameTransformer):
 
 class SearchRegionFrameCropper(_BaseFrameCropper):
     def __init__(self, search_region, inner_transform):
-        super(SearchRegionFrameCropper, self).__init__(inner_transform)
+        super().__init__(inner_transform)
         self.__search_region = self.__get_intersecting_region(search_region, 0)
 
 
@@ -72,7 +70,7 @@ class SearchRegionFrameCropper(_BaseFrameCropper):
 
 class FeedForwardFrameCropper(_BaseFrameCropper):
     def __init__(self, frame_location_map, inner_transform):
-        super(FeedForwardFrameCropper, self).__init__(inner_transform)
+        super().__init__(inner_transform)
         self.__fed_forward_detections = [utils.Rect.from_image_location(loc)
                                          for loc in utils.dict_values_ordered_by_key(frame_location_map)]
 

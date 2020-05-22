@@ -24,19 +24,19 @@
 # limitations under the License.                                            #
 #############################################################################
 
-from __future__ import division, print_function
+import functools
 
-import numpy as np
 import cv2
+import numpy as np
 
-import mpf_component_util as mpf_util
-import frame_transformer
-from search_region import SearchRegion
+from .frame_transformer import BaseDecoratedFrameTransformer
+from .. import utils
+from .search_region import SearchRegion
 
 
-class AffineFrameTransformer(frame_transformer.BaseDecoratedFrameTransformer):
+class AffineFrameTransformer(BaseDecoratedFrameTransformer):
     def __init__(self, regions, frame_rotation, frame_flip, search_region, inner_transform):
-        super(AffineFrameTransformer, self).__init__(inner_transform)
+        super().__init__(inner_transform)
         self.__transform = _AffineTransformation(regions, frame_rotation, frame_flip, search_region)
 
     @staticmethod
@@ -67,9 +67,9 @@ class AffineFrameTransformer(frame_transformer.BaseDecoratedFrameTransformer):
 
 
 
-class FeedForwardExactRegionAffineTransformer(frame_transformer.BaseDecoratedFrameTransformer):
+class FeedForwardExactRegionAffineTransformer(BaseDecoratedFrameTransformer):
     def __init__(self, regions, inner_transform):
-        super(FeedForwardExactRegionAffineTransformer, self).__init__(inner_transform)
+        super().__init__(inner_transform)
         self.__frame_transforms \
             = [_AffineTransformation(_single_region(*region), region[1], region[2], SearchRegion())
                for region in regions]
@@ -97,7 +97,7 @@ def _single_region(region_rect, rotation, flip):
     return [(region_rect, rotation, flip)]
 
 def _full_frame(frame_size):
-    frame_rect = mpf_util.Rect.from_corner_and_size((0, 0), frame_size)
+    frame_rect = utils.Rect.from_corner_and_size((0, 0), frame_size)
     return _single_region(frame_rect, 0, False)
 
 
@@ -135,12 +135,14 @@ class _AffineTransformation(object):
             flip_mat = _IndividualXForms.horizontal_flip()
             flip_shift_correction = _IndividualXForms.translation(mapped_bounding_rect.width - 1, 0)
             # Transformations are applied from right to left, so rotation occurs first.
-            combined_transform = reduce(
+            combined_transform = functools.reduce(
                 np.matmul,
                 (move_search_region_to_origin, flip_shift_correction, flip_mat, move_roi_to_origin, rotation_mat))
         else:
             # Transformations are applied from right to left, so rotation occurs first.
-            combined_transform = reduce(np.matmul, (move_search_region_to_origin, move_roi_to_origin, rotation_mat))
+            combined_transform = functools.reduce(
+                np.matmul,
+                (move_search_region_to_origin, move_roi_to_origin, rotation_mat))
 
         # When combining transformations the 3d version must be used,
         # but when mapping 2d points the last row of the matrix can be dropped.
@@ -172,13 +174,13 @@ class _AffineTransformation(object):
         image_location.x_left_upper = int(round(new_top_left[0]))
         image_location.y_left_upper = int(round(new_top_left[1]))
 
-        if not mpf_util.rotation_angles_equal(self.__rotation_degrees, 0):
-            existing_rotation = mpf_util.get_property(image_location.detection_properties, 'ROTATION', 0.0)
-            new_rotation = mpf_util.normalize_angle(existing_rotation + self.__rotation_degrees)
+        if not utils.rotation_angles_equal(self.__rotation_degrees, 0):
+            existing_rotation = utils.get_property(image_location.detection_properties, 'ROTATION', 0.0)
+            new_rotation = utils.normalize_angle(existing_rotation + self.__rotation_degrees)
             image_location.detection_properties['ROTATION'] = str(new_rotation)
 
         if self.__flip:
-            existing_flip = mpf_util.get_property(image_location.detection_properties, 'HORIZONTAL_FLIP', False)
+            existing_flip = utils.get_property(image_location.detection_properties, 'HORIZONTAL_FLIP', False)
             if existing_flip:
                 del image_location.detection_properties['HORIZONTAL_FLIP']
             else:
@@ -198,7 +200,7 @@ class _AffineTransformation(object):
         corner1 = np.amin(mapped_corners, axis=1)
         corner2 = np.amax(mapped_corners, axis=1)
         size = corner2 - corner1 + 1
-        return mpf_util.Rect.from_corner_and_size(corner1, size)
+        return utils.Rect.from_corner_and_size(corner1, size)
 
 
     @staticmethod
@@ -243,7 +245,7 @@ class _IndividualXForms(object):
     # Returns a matrix that will rotate points the given number of degrees in the counter-clockwise direction.
     @staticmethod
     def rotation(rotation_degrees):
-        if mpf_util.rotation_angles_equal(rotation_degrees, 0):
+        if utils.rotation_angles_equal(rotation_degrees, 0):
             # When rotation angle is 0 some matrix elements that should
             # have been 0 were actually 1e-16 due to rounding issues.
             return np.identity(3)
@@ -272,4 +274,3 @@ class _IndividualXForms(object):
             (0, 1, y_distance),
             (0, 0, 1)
         ))
-

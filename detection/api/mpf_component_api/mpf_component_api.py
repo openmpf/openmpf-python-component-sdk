@@ -24,109 +24,123 @@
 # limitations under the License.                                            #
 #############################################################################
 
-from __future__ import division, print_function
-
-import collections
+import dataclasses
+import enum
 import logging
 import logging.handlers
+import os
 import sys
-from . import mpf_component_api_util as util
+from typing import Any, Dict, Mapping, NamedTuple, Optional
 
 
-class Properties(util.TypedDict):
-    key_type = str
-    value_type = str
+@dataclasses.dataclass
+class ImageLocation:
+    x_left_upper: int
+    y_left_upper: int
+    width: int
+    height: int
+    confidence: float = -1
+    detection_properties: Dict[str, str] = dataclasses.field(default_factory=dict)
 
 
-@util.FieldTypes(x_left_upper=int, y_left_upper=int, width=int, height=int, confidence=float,
-                 detection_properties=Properties)
-class ImageLocation(object):
-    def __init__(self, x_left_upper, y_left_upper, width, height, confidence=-1.0, detection_properties=None):
-        self.x_left_upper = x_left_upper
-        self.y_left_upper = y_left_upper
-        self.width = width
-        self.height = height
-        self.confidence = confidence
-        self.detection_properties = util.create_if_none(detection_properties, Properties)
+@dataclasses.dataclass
+class VideoTrack:
+    start_frame: int
+    stop_frame: int
+    confidence: float = -1
+    frame_locations: Dict[int, ImageLocation] = dataclasses.field(default_factory=dict)
+    detection_properties: Dict[str, str] = dataclasses.field(default_factory=dict)
 
 
-class FrameLocationMap(util.TypedDict):
-    key_type = int
-    value_type = ImageLocation
+@dataclasses.dataclass
+class AudioTrack:
+    start_time: int
+    stop_time: int
+    confidence: float = -1
+    detection_properties: Dict[str, str] = dataclasses.field(default_factory=dict)
 
 
-@util.FieldTypes(start_frame=int, stop_frame=int, confidence=float, frame_locations=FrameLocationMap,
-                 detection_properties=Properties)
-class VideoTrack(object):
-    def __init__(self, start_frame, stop_frame, confidence=-1.0, frame_locations=None, detection_properties=None):
-        self.start_frame = start_frame
-        self.stop_frame = stop_frame
-        self.confidence = confidence
-        self.frame_locations = util.create_if_none(frame_locations, FrameLocationMap)
-        self.detection_properties = util.create_if_none(detection_properties, Properties)
-
-
-@util.FieldTypes(start_time=int, stop_time=int, confidence=float, detection_properties=Properties)
-class AudioTrack(object):
-    def __init__(self, start_time, stop_time, confidence, detection_properties=None):
-        self.start_time = start_time
-        self.stop_time = stop_time
-        self.confidence = confidence
-        self.detection_properties = util.create_if_none(detection_properties, Properties)
-
-
-@util.FieldTypes(confidence=float, detection_properties=Properties)
-class GenericTrack(object):
-    def __init__(self, confidence=-1.0, detection_properties=None):
-        self.confidence = confidence
-        self.detection_properties = util.create_if_none(detection_properties, Properties)
+@dataclasses.dataclass
+class GenericTrack:
+    confidence: float = -1
+    detection_properties: Dict[str, str] = dataclasses.field(default_factory=dict)
 
 
 
-VideoJob = collections.namedtuple('VideoJob', ('job_name', 'data_uri', 'start_frame', 'stop_frame',
-                                               'job_properties', 'media_properties', 'feed_forward_track'))
-
-ImageJob = collections.namedtuple('ImageJob', ('job_name', 'data_uri', 'job_properties', 'media_properties',
-                                               'feed_forward_location'))
-
-AudioJob = collections.namedtuple('AudioJob', ('job_name', 'data_uri', 'start_time', 'stop_time',
-                                               'job_properties', 'media_properties', 'feed_forward_track'))
-
-GenericJob = collections.namedtuple('GenericJob', ('job_name', 'data_uri', 'job_properties', 'media_properties',
-                                                   'feed_forward_track'))
+class VideoJob(NamedTuple):
+    job_name: str
+    data_uri: str
+    start_frame: int
+    stop_frame: int
+    job_properties: Mapping[str, str]
+    media_properties: Mapping[str, str]
+    feed_forward_track: Optional[VideoTrack] = None
 
 
-class DetectionError(util.EnumBase):
-    (
-        DETECTION_SUCCESS,
-        OTHER_DETECTION_ERROR_TYPE,
-        DETECTION_NOT_INITIALIZED,
-        UNRECOGNIZED_DATA_TYPE,
-        UNSUPPORTED_DATA_TYPE,
-        INVALID_DATAFILE_URI,
-        COULD_NOT_OPEN_DATAFILE,
-        COULD_NOT_READ_DATAFILE,
-        FILE_WRITE_ERROR,
-        IMAGE_READ_ERROR,
-        BAD_FRAME_SIZE,
-        BOUNDING_BOX_SIZE_ERROR,
-        INVALID_FRAME_INTERVAL,
-        INVALID_START_FRAME,
-        INVALID_STOP_FRAME,
-        DETECTION_FAILED,
-        DETECTION_TRACKING_FAILED,
-        INVALID_PROPERTY,
-        MISSING_PROPERTY,
-        PROPERTY_IS_NOT_INT,
-        PROPERTY_IS_NOT_FLOAT,
-        INVALID_ROTATION,
-        MEMORY_ALLOCATION_FAILED,
-        GPU_ERROR
-    ) = util.EnumBase.element_count(24)
+class ImageJob(NamedTuple):
+    job_name: str
+    data_uri: str
+    job_properties: Mapping[str, str]
+    media_properties: Mapping[str, str]
+    feed_forward_location: Optional[ImageLocation]
+
+
+class AudioJob(NamedTuple):
+    job_name: str
+    data_uri: str
+    start_time: int
+    stop_time: int
+    job_properties: Mapping[str, str]
+    media_properties: Mapping[str, str]
+    feed_forward_track: Optional[AudioTrack] = None
+
+
+class GenericJob(NamedTuple):
+    job_name: str
+    data_uri: str
+    job_properties: Mapping[str, str]
+    media_properties: Mapping[str, str]
+    feed_forward_track: Optional[GenericTrack] = None
+
+
+@enum.unique
+class DetectionError(enum.IntEnum):
+    DETECTION_SUCCESS = 0
+    OTHER_DETECTION_ERROR_TYPE = 1
+    DETECTION_NOT_INITIALIZED = 2
+    UNRECOGNIZED_DATA_TYPE = 3
+    UNSUPPORTED_DATA_TYPE = 4
+    INVALID_DATAFILE_URI = 5
+    COULD_NOT_OPEN_DATAFILE = 6
+    COULD_NOT_READ_DATAFILE = 7
+    FILE_WRITE_ERROR = 8
+    IMAGE_READ_ERROR = 9
+    BAD_FRAME_SIZE = 10
+    BOUNDING_BOX_SIZE_ERROR = 11
+    INVALID_FRAME_INTERVAL = 12
+    INVALID_START_FRAME = 13
+    INVALID_STOP_FRAME = 14
+    DETECTION_FAILED = 15
+    DETECTION_TRACKING_FAILED = 16
+    INVALID_PROPERTY = 17
+    MISSING_PROPERTY = 18
+    PROPERTY_IS_NOT_INT = 19
+    PROPERTY_IS_NOT_FLOAT = 20
+    INVALID_ROTATION = 21
+    MEMORY_ALLOCATION_FAILED = 22
+    GPU_ERROR = 23
+
+    def exception(self, message: str) -> 'DetectionException':
+        return DetectionException(message, self)
 
 
 class DetectionException(Exception):
-    def __init__(self, message, error_code=DetectionError.OTHER_DETECTION_ERROR_TYPE, *args):
+    error_code: DetectionError
+
+    def __init__(self,
+                 message: str,
+                 error_code: DetectionError = DetectionError.OTHER_DETECTION_ERROR_TYPE,
+                 *args: Any) -> None:
         super(DetectionException, self).__init__(message, error_code, *args)
         if isinstance(error_code, DetectionError):
             self.error_code = error_code
@@ -134,24 +148,65 @@ class DetectionException(Exception):
             self.error_code = DetectionError.OTHER_DETECTION_ERROR_TYPE
 
 
+# Example log line: 2018-05-03 14:41:11,703 INFO  [test_component.py:44] - Logged message
+LOG_MESSAGE_FORMAT = '%(asctime)s %(levelname)-5s [%(filename)s:%(lineno)d] - %(message)s'
 
-def configure_logging(log_file_name, debug=False):
+def configure_logging(log_file_name: str, debug: bool = False, replace_existing_config: bool = True) -> logging.Logger:
     # Change default level names to match what WFM expects
     # Change default level name for logger.warn and logger.warning from 'WARNING' to 'WARN'
     logging.addLevelName(logging.WARN, 'WARN')
     # Change default level name for logger.fatal and logger.critical from 'CRITICAL' to 'FATAL'
     logging.addLevelName(logging.FATAL, 'FATAL')
 
-    logger = logging.getLogger(util.get_log_name(log_file_name))
-    logger.propagate = False
-    if debug:
-        logger.setLevel(logging.DEBUG)
-        handler = logging.StreamHandler(sys.stdout)
+    env_log_level = os.getenv('LOG_LEVEL')
+    error_msgs = []
+    if env_log_level:
+        # When the logging level exists, logging.getLevelName() returns the int value of that level.
+        # When the logging level does not exist, logging.getLevelName() returns a string like: "Level bad_level_name".
+        level = logging.getLevelName(env_log_level.upper())
+        if not isinstance(level, int):
+            error_msgs.append(f'The $LOG_LEVEL environment variable was set to "{env_log_level}", '
+                              'but that is not a valid a log level. Setting log level to DEBUG.')
+            level = logging.DEBUG
     else:
-        logger.setLevel(logging.INFO)
-        handler = logging.handlers.TimedRotatingFileHandler(util.get_full_log_path(log_file_name), when='midnight')
+        level = logging.DEBUG if debug else logging.INFO
 
-    # Example log line: 2018-05-03 14:41:11,703 INFO  [test_component.py:44] - Logged message
-    handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)-5s [%(filename)s:%(lineno)d] - %(message)s'))
-    logger.addHandler(handler)
+    log_handlers = [logging.StreamHandler(sys.stdout)]
+    if not debug:
+        if log_file_name:
+            log_path = _get_full_log_path(log_file_name)
+            if log_path:
+                file_handler = logging.handlers.TimedRotatingFileHandler(log_path, when='midnight', delay=True)
+                log_handlers.append(file_handler)
+            else:
+                error_msgs.append(
+                    'Unable to determine full path to log file because the $MPF_LOG_PATH and/or $THIS_MPF_NODE '
+                    'environment variables were not set. Log messages will only be sent to standard out.')
+        else:
+            error_msgs.append('Unable to determine full path to log file because no file name was provided. '
+                              'Log messages will only be sent to standard out.')
+
+    # noinspection PyArgumentList
+    # ^ False positive
+    logging.basicConfig(format=LOG_MESSAGE_FORMAT, level=level, handlers=log_handlers, force=replace_existing_config)
+
+    logger = logging.getLogger(_get_log_name(log_file_name))
+    for error_msg in error_msgs:
+        logger.error(error_msg)
     return logger
+
+
+def _get_full_log_path(filename):
+    if 'MPF_LOG_PATH' not in os.environ or 'THIS_MPF_NODE' not in os.environ:
+        return None
+
+    log_dir = os.path.expandvars('$MPF_LOG_PATH/$THIS_MPF_NODE/log')
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    log_path = os.path.join(log_dir, filename)
+    return os.path.expandvars(log_path)
+
+
+def _get_log_name(filename):
+    log_name, _ = os.path.splitext(os.path.basename(filename if filename else ''))
+    return log_name if log_name else 'component_logger'
