@@ -213,22 +213,26 @@ class TestAffineTransformer(unittest.TestCase):
 
         # Test without existing flip
         detection = mpf.ImageLocation(10, 20, 40, 50)
-        transformer.reverse_transform(detection, 0)
-        self.assertEqual(50, detection.x_left_upper)
-        self.assertEqual(20, detection.y_left_upper)
-        self.assertEqual(40, detection.width)
-        self.assertEqual(50, detection.height)
-        self.assertIn('HORIZONTAL_FLIP', detection.detection_properties)
-        self.assertTrue(mpf_util.get_property(detection.detection_properties, 'HORIZONTAL_FLIP', False))
+        detection_reversed = mpf.ImageLocation(10, 20, 40, 50)
+        transformer.reverse_transform(detection_reversed, 0)
+
+        self.assertEqual(frame_width - detection.x_left_upper - 1, detection_reversed.x_left_upper)
+        self.assertEqual(detection.y_left_upper, detection_reversed.y_left_upper)
+        self.assertEqual(detection.width, detection_reversed.width)
+        self.assertEqual(detection.height, detection_reversed.height)
+        self.assertIn('HORIZONTAL_FLIP', detection_reversed.detection_properties)
+        self.assertTrue(mpf_util.get_property(detection_reversed.detection_properties, 'HORIZONTAL_FLIP', False))
 
         # Test with existing flip
         detection = mpf.ImageLocation(10, 20, 40, 50, -1, dict(HORIZONTAL_FLIP='True'))
-        transformer.reverse_transform(detection, 0)
-        self.assertEqual(50, detection.x_left_upper)
-        self.assertEqual(20, detection.y_left_upper)
-        self.assertEqual(40, detection.width)
-        self.assertEqual(50, detection.height)
-        self.assertNotIn('HORIZONTAL_FLIP', detection.detection_properties)
+        detection_reversed = mpf.ImageLocation(10, 20, 40, 50, -1, dict(HORIZONTAL_FLIP='True'))
+        transformer.reverse_transform(detection_reversed, 0)
+
+        self.assertEqual(frame_width - detection.x_left_upper - 1, detection_reversed.x_left_upper)
+        self.assertEqual(detection.y_left_upper, detection_reversed.y_left_upper)
+        self.assertEqual(detection.width, detection_reversed.width)
+        self.assertEqual(detection.height, detection_reversed.height)
+        self.assertNotIn('HORIZONTAL_FLIP', detection_reversed.detection_properties)
 
 
     def test_normalize_angle(self):
@@ -392,6 +396,43 @@ class TestAffineTransformer(unittest.TestCase):
     def assert_search_region_matches_rect(self, expected_region, search_region):
         self.assertEqual(expected_region, search_region.get_rect(mpf_util.Size(50, 100)))
 
+
+    def test_rotate_with_flip_full_frame(self):
+        frame_rotation = 345
+        job = mpf.ImageJob('test', test_util.get_data_file_path('rotation/hello-world-flip.png'),
+                           dict(HORIZONTAL_FLIP='true', ROTATION=str(frame_rotation)), {})
+
+        image_reader = mpf_util.ImageReader(job)
+        image = image_reader.get_image()
+
+        il = mpf.ImageLocation(0, 0, image.shape[1], image.shape[0])
+        image_reader.reverse_transform(il)
+
+        self.assertEqual(836, il.x_left_upper)
+        self.assertEqual(38, il.y_left_upper)
+        self.assertEqual(image.shape[1], il.width)
+        self.assertEqual(image.shape[0], il.height)
+        self.assertEqual('true', il.detection_properties['HORIZONTAL_FLIP'])
+        self.assertAlmostEqual(360 - frame_rotation, float(il.detection_properties['ROTATION']))
+
+
+    def test_rotation_full_frame(self):
+        frame_rotation = 15
+        job = mpf.ImageJob('test', test_util.get_data_file_path('rotation/hello-world.png'),
+                           dict(ROTATION=str(frame_rotation)), {})
+
+        image_reader = mpf_util.ImageReader(job)
+        image = image_reader.get_image()
+
+        il = mpf.ImageLocation(0, 0, image.shape[1], image.shape[0])
+        image_reader.reverse_transform(il)
+
+        self.assertEqual(-141, il.x_left_upper)
+        self.assertEqual(38, il.y_left_upper)
+        self.assertEqual(image.shape[1], il.width)
+        self.assertEqual(image.shape[0], il.height)
+        self.assertNotIn('HORIZONTAL_FLIP', il.detection_properties)
+        self.assertAlmostEqual(frame_rotation, float(il.detection_properties['ROTATION']))
 
 
 

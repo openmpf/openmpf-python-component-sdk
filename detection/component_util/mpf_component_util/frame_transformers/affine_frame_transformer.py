@@ -25,22 +25,29 @@
 #############################################################################
 
 import functools
+from typing import Sequence, Iterable
 
 import cv2
 import numpy as np
 
-from .frame_transformer import BaseDecoratedFrameTransformer
+from .frame_transformer import BaseDecoratedFrameTransformer, IFrameTransformer
 from .. import utils
 from .search_region import SearchRegion
 
 
 class AffineFrameTransformer(BaseDecoratedFrameTransformer):
-    def __init__(self, regions, frame_rotation, frame_flip, search_region, inner_transform):
+    def __init__(self,
+                 regions: Sequence[utils.RotatedRect],
+                 frame_rotation: float,
+                 frame_flip: bool,
+                 search_region: SearchRegion,
+                 inner_transform: IFrameTransformer):
         super().__init__(inner_transform)
         self.__transform = _AffineTransformation(regions, frame_rotation, frame_flip, search_region)
 
     @staticmethod
-    def search_region_on_rotated_frame(rotation, flip, search_region, inner_transform):
+    def search_region_on_rotated_frame(rotation: float, flip: bool, search_region: SearchRegion,
+                                       inner_transform: IFrameTransformer) -> 'AffineFrameTransformer':
         return AffineFrameTransformer(
             _full_frame(inner_transform.get_frame_size(0)),
             rotation, flip, search_region, inner_transform)
@@ -68,11 +75,9 @@ class AffineFrameTransformer(BaseDecoratedFrameTransformer):
 
 
 class FeedForwardExactRegionAffineTransformer(BaseDecoratedFrameTransformer):
-    def __init__(self, regions, inner_transform):
+    def __init__(self, regions: Iterable[utils.RotatedRect], inner_transform: IFrameTransformer):
         super().__init__(inner_transform)
-        self.__frame_transforms \
-            = [_AffineTransformation(_single_region(*region), region[1], region[2], SearchRegion())
-               for region in regions]
+        self.__frame_transforms = [self.__create_transformation(r) for r in regions]
 
     def _do_frame_transform(self, frame, frame_index):
         return self.__get_transform(frame_index).apply(frame)
@@ -91,15 +96,18 @@ class FeedForwardExactRegionAffineTransformer(BaseDecoratedFrameTransformer):
                 'Attempted to get transformation for frame: {}, but there are only {} entries in the feed forward track'
                 .format(frame_index, len(self.__frame_transforms)))
 
+    @staticmethod
+    def __create_transformation(region: utils.RotatedRect):
+        frame_rotation = 360 - region.rotation if region.flip else region.rotation
+        return _AffineTransformation((region,), frame_rotation, region.flip, SearchRegion())
+
 
 
 def _single_region(region_rect, rotation, flip):
     return [(region_rect, rotation, flip)]
 
-def _full_frame(frame_size):
-    frame_rect = utils.Rect.from_corner_and_size((0, 0), frame_size)
-    return _single_region(frame_rect, 0, False)
-
+def _full_frame(frame_size: utils.Size) -> Sequence[utils.RotatedRect]:
+    return (utils.RotatedRect(0, 0, frame_size.width, frame_size.height, 0, False),)
 
 
 class _AffineTransformation(object):
@@ -109,7 +117,6 @@ class _AffineTransformation(object):
 
         self.__rotation_degrees = frame_rotation_degrees
         self.__flip = flip
-
 
         # Rotating an image around the origin will move some or all of the pixels out of the frame.
         rotation_mat = _IndividualXForms.rotation(360 - frame_rotation_degrees)
@@ -167,8 +174,6 @@ class _AffineTransformation(object):
 
     def apply_reverse(self, image_location):
         top_left = np.array((image_location.x_left_upper, image_location.y_left_upper, 1.0), dtype=float)
-        if self.__flip:
-            top_left[0] += image_location.width - 1
         new_top_left = np.matmul(self.__reverse_transformation_matrix, top_left)
 
         image_location.x_left_upper = int(round(new_top_left[0]))
@@ -176,7 +181,8 @@ class _AffineTransformation(object):
 
         if not utils.rotation_angles_equal(self.__rotation_degrees, 0):
             existing_rotation = utils.get_property(image_location.detection_properties, 'ROTATION', 0.0)
-            new_rotation = utils.normalize_angle(existing_rotation + self.__rotation_degrees)
+            rotation_adjustment_amount = 360 - self.__rotation_degrees if self.__flip else self.__rotation_degrees
+            new_rotation = utils.normalize_angle(existing_rotation + rotation_adjustment_amount)
             image_location.detection_properties['ROTATION'] = str(new_rotation)
 
         if self.__flip:
@@ -199,41 +205,14 @@ class _AffineTransformation(object):
         mapped_corners = np.matmul(simple_rotation, _AffineTransformation.__get_all_corners(regions))
         corner1 = np.amin(mapped_corners, axis=1)
         corner2 = np.amax(mapped_corners, axis=1)
-        size = corner2 - corner1 + 1
-        return utils.Rect.from_corner_and_size(corner1, size)
+        return utils.Rect.from_corners(corner1, corner2 + 1)
+
 
 
     @staticmethod
-    def __get_all_corners(regions):
+    def __get_all_corners(regions: Iterable[utils.RotatedRect]):
         # Matrix containing each region's 4 corners. First row is x coordinate and second row is y coordinate.
-        return np.hstack([_AffineTransformation.__get_corners(region, rot) for region, rot, _ in regions])
-
-    @staticmethod
-    def __get_corners(region, rotation):
-        radians = np.deg2rad(rotation)
-        sin_val = np.sin(radians)
-        cos_val = np.cos(radians)
-
-        x = region.x
-        y = region.y
-        # Need to subtract one because if you have a Rect(x=0, y=0, width=10, height=10),
-        # the bottom right corner is (9, 9) not (10, 10)
-        width = region.width - 1
-        height = region.height - 1
-
-        corner_2_x = x + width * cos_val
-        corner_2_y = y - width * sin_val
-
-        corner_3_x = corner_2_x + height * sin_val
-        corner_3_y = corner_2_y + height * cos_val
-
-        corner_4_x = x + height * sin_val
-        corner_4_y = y + height * cos_val
-
-        return (
-            (x, corner_2_x, corner_3_x, corner_4_x),
-            (y, corner_2_y, corner_3_y, corner_4_y)
-        )
+        return np.transpose(np.vstack([r.corners for r in regions]))
 
 
 

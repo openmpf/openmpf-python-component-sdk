@@ -82,7 +82,7 @@ class ImageJob(NamedTuple):
     data_uri: str
     job_properties: Mapping[str, str]
     media_properties: Mapping[str, str]
-    feed_forward_location: Optional[ImageLocation]
+    feed_forward_location: Optional[ImageLocation] = None
 
 
 class AudioJob(NamedTuple):

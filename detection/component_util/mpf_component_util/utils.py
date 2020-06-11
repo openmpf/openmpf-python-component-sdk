@@ -24,11 +24,13 @@
 # limitations under the License.                                            #
 #############################################################################
 
+import dataclasses
 import operator
 import sys
 import typing
-from typing import Any, Callable, Iterator, Mapping, NamedTuple, Optional, Sequence, Tuple, Union, TypeVar
+from typing import Callable, Mapping, NamedTuple, Optional, Sequence, Tuple, Union, TypeVar
 
+import cv2
 import numpy as np
 
 import mpf_component_api as mpf
@@ -59,20 +61,13 @@ def get_property(
         return default_value
 
 
-TKey = TypeVar('TKey')
-TVal = TypeVar('TVal')
-
-def dict_items_ordered_by_key(
-        dict_: Mapping[TKey, TVal],
-        key: Optional[Callable[[TKey], Any]] = None,
-        reverse: bool = False) -> Iterator[Tuple[TKey, TVal]]:
+def dict_items_ordered_by_key(dict_, key=None, reverse=False):
     ordered_keys = sorted(dict_, key=key, reverse=reverse)
     return ((k, dict_[k]) for k in ordered_keys)
 
 
-def dict_values_ordered_by_key(dict_: Mapping[TKey, TVal]) -> Iterator[TVal]:
+def dict_values_ordered_by_key(dict_):
     return (v for k, v in dict_items_ordered_by_key(dict_))
-
 
 
 def normalize_angle(angle: float) -> float:
@@ -89,7 +84,13 @@ def rotation_angles_equal(a1: float, a2: float, epsilon=0.1) -> bool:
 
 IntOrFloat = Union[int, float]
 
+
 class Point(NamedTuple):
+    """
+    The C++ OpenCV has a cv::Point class, but the Python version uses 2-tuples to represent points.
+    Since NamedTuple is a subclass of tuple, this class can be used as a parameter in OpenCV functions
+    that expect a point.
+    """
     x: IntOrFloat
     y: IntOrFloat
 
@@ -98,6 +99,11 @@ _PointLike = Union[Point, Tuple[IntOrFloat, IntOrFloat], Sequence[IntOrFloat]]
 
 
 class Size(NamedTuple):
+    """
+    The C++ OpenCV has a cv::Size class, but the Python version uses 2-tuples to represent sizes.
+    Since NamedTuple is a subclass of tuple, this class can be used as a parameter in OpenCV functions
+    that expect a size.
+    """
     width: IntOrFloat
     height: IntOrFloat
 
@@ -125,6 +131,11 @@ def element_wise_op(op, obj1, obj2, target_type=None):
 
 
 class Rect(NamedTuple):
+    """
+    The C++ OpenCV has a cv::Rect class, but the Python version uses 4-tuples to represent rectangles.
+    Since NamedTuple is a subclass of tuple, this class can be used as a parameter in OpenCV functions
+    that expect a rectangle.
+    """
     x: IntOrFloat
     y: IntOrFloat
     width: IntOrFloat
@@ -213,3 +224,81 @@ _RectLike = Union[
     Tuple[_PointLike, Size],
     Tuple[_PointLike, Point]
 ]
+
+
+@dataclasses.dataclass
+class RotatedRect:
+    """
+    Represents a rectangle that may or may not be axis aligned.
+    The algorithm to "draw" the rectangle, is as follows:
+    1. Draw the rectangle ignoring rotation and flip.
+    2. Stick a pin in the top left corner of the rectangle because the top left doesn't move,
+       but the rest of the rectangle may be moving.
+    3. Rotate the rectangle counter-clockwise the given number of degrees around its top left corner.
+    4. If the rectangle is flipped, flip horizontally around the top left corner.
+    """
+    x: float
+    y: float
+    width: float
+    height: float
+    rotation: float
+    flip: bool
+
+    @property
+    def corners(self) -> Tuple[Point, Point, Point, Point]:
+        has_rotation = not rotation_angles_equal(self.rotation, 0)
+        if not has_rotation and not self.flip:
+            return (
+                Point(self.x, self.y),
+                Point(self.x + self.width - 1, self.y),
+                Point(self.x + self.width - 1, self.y + self.height - 1),
+                Point(self.x, self.y + self.height - 1),
+            )
+
+        xform_mat = self._get_transform_mat()
+
+        tr_x = self.x + self.width - 1
+        br_y = self.y + self.height - 1
+        corner_mat = (
+            (tr_x, tr_x, self.x),
+            (self.y, br_y, br_y),
+            (1, 1, 1)
+        )
+
+        xformed_corners = np.matmul(xform_mat, corner_mat)
+        return (
+            Point(self.x, self.y),
+            Point(xformed_corners[0, 0], xformed_corners[1, 0]),
+            Point(xformed_corners[0, 1], xformed_corners[1, 1]),
+            Point(xformed_corners[0, 2], xformed_corners[1, 2])
+        )
+
+    def _get_transform_mat(self):
+        has_rotation = not rotation_angles_equal(self.rotation, 0)
+        assert has_rotation or self.flip
+
+        if has_rotation and not self.flip:
+            # This case is handled separately because it is the most common case and we can avoid some work.
+            return cv2.getRotationMatrix2D((self.x, self.y), self.rotation, 1)
+
+        # At this point, we know we need to flip since we already checked
+        # !hasRotation && !flip before calling this function.
+        flip_mat = (
+            (-1, 0, 2 * self.x),
+            (0, 1, 0)
+        )
+        if not has_rotation:
+            return flip_mat
+
+        rotation_mat2d = cv2.getRotationMatrix2D((self.x, self.y), self.rotation, 1)
+        # Add a row to the rotation matrix so it has the size required to multiply with the flip matrix.
+        full_rotation_mat = np.vstack((rotation_mat2d, (0, 0, 1)))
+
+        # Transform are applied from right to left, so rotation will occur before flipping.
+        return np.matmul(flip_mat, full_rotation_mat)
+
+
+    @property
+    def bounding_rect(self) -> Rect:
+        corners = np.asarray(self.corners)
+        return Rect.from_corners(np.min(corners, axis=0), np.max(corners, axis=0) + 1)
