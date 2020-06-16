@@ -27,7 +27,15 @@
 from __future__ import division, print_function
 
 import os
+import itertools
 import sys
+from typing import Iterable
+
+import cv2
+import numpy as np
+
+import mpf_component_api as mpf
+import mpf_component_util as mpf_util
 
 
 def add_local_component_libs_to_sys_path():
@@ -49,3 +57,41 @@ def is_all_black(image):
 
 def is_all_white(image):
     return is_all_same_color(image, (255, 255, 255))
+
+
+def markup_image(original_image: np.ndarray, image_locations: Iterable[mpf.ImageLocation]) -> np.ndarray:
+    image = original_image.copy()
+
+    colors = get_colors()
+    thickness = int(max(2, 0.0018 * max(image.shape[:2])))
+    radius = 3 if thickness == 1 else thickness + 5
+
+    for il in image_locations:
+        detection_rect = mpf_util.RotatedRect(
+            il.x_left_upper, il.y_left_upper, il.width, il.height,
+            float(il.detection_properties.get('ROTATION', 0)),
+            mpf_util.get_property(il.detection_properties, 'HORIZONTAL_FLIP', False))
+
+        corners = [(int(c.x), int(c.y)) for c in detection_rect.corners]
+        color = next(colors)
+        cv2.line(image, corners[0], corners[1], color, thickness, cv2.LINE_AA)
+        cv2.line(image, corners[1], corners[2], color, thickness, cv2.LINE_AA)
+        cv2.line(image, corners[2], corners[3], color, thickness, cv2.LINE_AA)
+        cv2.line(image, corners[3], corners[0], color, thickness, cv2.LINE_AA)
+
+        cv2.circle(image, corners[0], radius, color, -1, cv2.LINE_AA)
+
+    return image
+
+
+def get_colors():
+    colors = (
+        (255, 0, 0),
+        (0, 255, 0),
+        (0, 0, 255),
+        (0, 255, 255),
+        (255, 0, 255),
+        (255, 0, 0)
+    )
+    return itertools.cycle(colors)
+

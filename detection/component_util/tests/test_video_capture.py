@@ -729,10 +729,11 @@ class TestVideoCaptureMixin(unittest.TestCase):
         component = VideoCaptureMixinComponent(self)
         results = list(component.get_detections_from_video(job))
         self.assertEqual(4, len(results))
-        self.assertEqual((319, 170, 30, 20), mpf_util.Rect.from_image_location(results[0].frame_locations[0]))
-        self.assertEqual((239, 120, 30, 20), mpf_util.Rect.from_image_location(results[1].frame_locations[0]))
-        self.assertEqual((319, 120, 30, 20), mpf_util.Rect.from_image_location(results[2].frame_locations[0]))
-        self.assertEqual((239, 170, 30, 20), mpf_util.Rect.from_image_location(results[3].frame_locations[0]))
+        self.assertEqual((319, 199, 30, 20), mpf_util.Rect.from_image_location(results[0].frame_locations[0]))
+        self.assertEqual((239, 149, 30, 20), mpf_util.Rect.from_image_location(results[1].frame_locations[0]))
+        self.assertEqual((319, 149, 30, 20), mpf_util.Rect.from_image_location(results[2].frame_locations[0]))
+        self.assertEqual((239, 199, 30, 20), mpf_util.Rect.from_image_location(results[3].frame_locations[0]))
+
 
 
 class VideoCaptureMixinComponent(mpf_util.VideoCaptureMixin):

@@ -27,6 +27,9 @@
 from __future__ import division, print_function
 
 import sys
+from typing import Dict, Iterable, Union
+
+import mpf_component_api as mpf
 
 from .affine_frame_transformer import AffineFrameTransformer, FeedForwardExactRegionAffineTransformer
 from .frame_transformer import NoOpTransformer
@@ -35,7 +38,7 @@ from .search_region import SearchRegion, RegionEdge
 from .. import utils
 
 
-def get_transformer(job, input_frame_size):
+def get_transformer(job: Union[mpf.VideoJob, mpf.ImageJob], input_frame_size):
     ff_frame_locations = dict()
     track_properties = dict()
     if hasattr(job, 'feed_forward_track'):
@@ -51,7 +54,7 @@ def get_transformer(job, input_frame_size):
 
 
 
-def _get_transformer(job, input_frame_size, ff_frame_locations, track_properties):
+def _get_transformer(job, input_frame_size, ff_frame_locations: Dict[int, mpf.ImageLocation], track_properties):
     transformer = NoOpTransformer(input_frame_size)
 
     if _feed_forward_is_enabled(job.job_properties):
@@ -90,7 +93,8 @@ def _add_transformers_if_needed(job_properties, media_properties, input_video_si
 
 
 
-def _add_feed_forward_transforms_if_needed(job_properties, media_properties, track_properties, detections,
+def _add_feed_forward_transforms_if_needed(job_properties, media_properties, track_properties,
+                                           detections: Dict[int, mpf.ImageLocation],
                                            current_transformer):
     if _search_region_cropping_is_enabled(job_properties):
         print('Both feed forward cropping and search region cropping properties were provided. '
@@ -131,7 +135,8 @@ def _add_feed_forward_transforms_if_needed(job_properties, media_properties, tra
         if flip or not utils.rotation_angles_equal(0, rotation):
             requires_rotation_or_flip = True
 
-        regions.append((utils.Rect.from_image_location(detection), rotation, flip))
+        regions.append(utils.RotatedRect(
+            detection.x_left_upper, detection.y_left_upper, detection.width, detection.height, rotation, flip))
 
     if is_exact_region_mode:
         if requires_rotation_or_flip:
@@ -161,15 +166,15 @@ def _get_job_level_flip(job_properties, media_properties):
     return 'HORIZONTAL_FLIP' in props, utils.get_property(props, 'HORIZONTAL_FLIP', False)
 
 
-def _get_superset_region_no_rotation(regions):
+def _get_superset_region_no_rotation(regions: Iterable[utils.RotatedRect]) -> utils.Rect:
     if not regions:
         raise ValueError('FEED_FORWARD_TYPE: SUPERSET_REGION is enabled, but feed forward track was empty.')
 
     region_iter = iter(regions)
 
-    region = next(region_iter)[0]
+    region = next(region_iter).bounding_rect
     for next_region in region_iter:
-        region = region.union(next_region[0])
+        region = region.union(next_region.bounding_rect)
     return region
 
 

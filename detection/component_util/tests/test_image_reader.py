@@ -113,7 +113,8 @@ class TestImageReader(unittest.TestCase):
         self.assertTrue(images_equal(original_black_corner, flipped_black_corner))
         self.assertTrue(images_equal(original_white_corner, flipped_white_corner))
 
-        self._assert_reverse_transform(flipped_image_reader, (0, 170, 20, 30), (300, 170, 20, 30))
+        self._assert_reverse_transform(flipped_image_reader, (0, 170, 20, 30),
+                                       (flipped_image.shape[1] - 1, 170, 20, 30))
 
 
     def test_rotation(self):
@@ -131,10 +132,10 @@ class TestImageReader(unittest.TestCase):
     def _assert_reverse_transform(self, image_reader, pre_transform_values, post_transform_values):
         il = mpf.ImageLocation(*pre_transform_values)
         image_reader.reverse_transform(il)
-        self.assertEqual(il.x_left_upper, post_transform_values[0])
-        self.assertEqual(il.y_left_upper, post_transform_values[1])
-        self.assertEqual(il.width, post_transform_values[2])
-        self.assertEqual(il.height, post_transform_values[3])
+        self.assertEqual(post_transform_values[0], il.x_left_upper)
+        self.assertEqual(post_transform_values[1], il.y_left_upper)
+        self.assertEqual(post_transform_values[2], il.width)
+        self.assertEqual(post_transform_values[3], il.height)
 
         expected_rotation = post_transform_values[4] if len(post_transform_values) > 4 else 0
         actual_rotation = mpf_util.get_property(il.detection_properties, 'ROTATION', 0.0)
@@ -155,11 +156,10 @@ class TestImageReader(unittest.TestCase):
         component = ImageReaderMixinComponent(self)
         results = list(component.get_detections_from_image(job))
         self.assertEqual(4, len(results))
-        self.assertEqual((319, 170, 30, 20), mpf_util.Rect.from_image_location(results[0]))
-        self.assertEqual((239, 120, 30, 20), mpf_util.Rect.from_image_location(results[1]))
-        self.assertEqual((319, 120, 30, 20), mpf_util.Rect.from_image_location(results[2]))
-        self.assertEqual((239, 170, 30, 20), mpf_util.Rect.from_image_location(results[3]))
-
+        self.assertEqual((319, 199, 30, 20), mpf_util.Rect.from_image_location(results[0]))
+        self.assertEqual((239, 149, 30, 20), mpf_util.Rect.from_image_location(results[1]))
+        self.assertEqual((319, 149, 30, 20), mpf_util.Rect.from_image_location(results[2]))
+        self.assertEqual((239, 199, 30, 20), mpf_util.Rect.from_image_location(results[3]))
 
 
 
