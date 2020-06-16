@@ -103,9 +103,6 @@ class FeedForwardExactRegionAffineTransformer(BaseDecoratedFrameTransformer):
 
 
 
-def _single_region(region_rect, rotation, flip):
-    return [(region_rect, rotation, flip)]
-
 def _full_frame(frame_size: utils.Size) -> Sequence[utils.RotatedRect]:
     return (utils.RotatedRect(0, 0, frame_size.width, frame_size.height, 0, False),)
 
