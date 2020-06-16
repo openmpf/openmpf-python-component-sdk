@@ -30,6 +30,6 @@ import setuptools
 setuptools.setup(
     name='mpf_component_api',
     description='OpenMPF Python Component API',
-    version='0.1',
+    version='5.0',
     packages=setuptools.find_packages()
 )
