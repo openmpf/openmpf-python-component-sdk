@@ -284,7 +284,7 @@ class RotatedRect:
         # At this point, we know we need to flip since we already checked
         # !hasRotation && !flip before calling this function.
 
-        # The last column of flipMat makes it so the flip is around the top left coordinate, rather than the y-axis.
+        # The last column of flip_mat makes it so the flip is around the top left coordinate, rather than the y-axis.
         # 2*self.x is used because the point is initially x units away from the y-axis. After flipping around the
         # y-axis, the mirrored point is also x units away from the y-axis, except in the opposite direction.
         # This means there is a total distance of 2*self.x between a point and its mirrored point.
