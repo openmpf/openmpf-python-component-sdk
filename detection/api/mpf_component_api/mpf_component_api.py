@@ -147,11 +147,18 @@ class DetectionException(Exception):
         else:
             self.error_code = DetectionError.OTHER_DETECTION_ERROR_TYPE
 
+    def __str__(self):
+        if len(self.args) == 2 and self.args[1] == self.error_code:
+            return f'{self.args[0]} (DetectionError.{self.error_code.name})'
+        else:
+            return super().__str__()
+
+
 
 # Example log line: 2018-05-03 14:41:11,703 INFO  [test_component.py:44] - Logged message
 LOG_MESSAGE_FORMAT = '%(asctime)s %(levelname)-5s [%(filename)s:%(lineno)d] - %(message)s'
 
-def configure_logging(log_file_name: str, debug: bool = False, replace_existing_config: bool = True) -> logging.Logger:
+def configure_logging(log_file_name: str, debug: bool = False, replace_existing_config: bool = False) -> logging.Logger:
     # Change default level names to match what WFM expects
     # Change default level name for logger.warn and logger.warning from 'WARNING' to 'WARN'
     logging.addLevelName(logging.WARN, 'WARN')

@@ -31,10 +31,6 @@ from typing import Optional
 
 from pydub.audio_segment import fix_wav_headers
 
-import mpf_component_api as mpf
-
-logger = mpf.configure_logging('audio-ripper.log', __name__ == '__main__')
-
 def transcode_to_wav(filepath: str, start_time: float = 0, stop_time: Optional[float] = None) -> bytes:
     """
     Transcodes the audio contained in filepath (can be an audio or video file)
@@ -44,18 +40,8 @@ def transcode_to_wav(filepath: str, start_time: float = 0, stop_time: Optional[f
     :param start_time: The time (in milliseconds) associated with the beginning of audio segment. Default 0.
     :param stop_time: The time (in milliseconds) associated with the end of the audio segment. To go to the end of the file, pass None. Default None.
     """
-    logger.info((
-            'Reading and transcoding audio in {filepath:s} to WAVE format.'
-        ).format(
-            filepath=filepath,
-        )
-    )
-
-    # Resolve symbolic path if necessary
-    filepath = os.path.realpath(filepath)
-
     # Confirm that input file exists
-    if not os.path.isfile(filepath):
+    if not os.path.exists(filepath):
         raise ValueError("Input file does not exist: " + filepath)
 
     # Construct ffmpeg call
@@ -117,11 +103,9 @@ def transcode_to_wav(filepath: str, start_time: float = 0, stop_time: Optional[f
             exit_code = 128 - exit_code
         if p_err:
             error_msg += ' Error message: {e:s}'.format(e=p_err.decode('utf-8'))
-        logger.error(error_msg)
         raise EnvironmentError(exit_code, error_msg)
     elif len(p_out) == 0:
         error_msg = "The ffmpeg process exited without error, but failed to produce any audio data."
-        logger.error(error_msg)
         raise ValueError(error_msg)
 
     p_out = bytearray(p_out)
