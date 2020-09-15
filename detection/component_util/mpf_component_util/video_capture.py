@@ -340,7 +340,7 @@ class VideoCapture(Iterable[np.ndarray]):
         if utils.get_property(video_job.job_properties, 'USE_KEY_FRAMES', False):
             try:
                 return frame_filters.KeyFrameFilter(video_job)
-            except EnvironmentError as err:
+            except OSError as err:
                 print('Unable to get key frames due to:', err, file=sys.stderr)
                 print('Falling back to IntervalFrameFilter', file=sys.stderr)
 
