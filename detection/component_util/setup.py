@@ -33,10 +33,10 @@ os.chdir(os.path.dirname(__file__))
 setuptools.setup(
     name='mpf_component_util',
     description='OpenMPF Python Component Utilities',
-    version='5.0',
+    version='5.1',
     packages=setuptools.find_packages(exclude=('*test*',)),
     install_requires=(
-        'mpf_component_api>=5.0',
+        'mpf_component_api>=5.1',
         'opencv-python>=3.3',
         'pydub'
     ),
