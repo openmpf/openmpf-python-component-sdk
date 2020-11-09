@@ -115,7 +115,7 @@ class TestAffineTransformer(unittest.TestCase):
         # noinspection PyTypeChecker
         img = np.full(shape=(height, width, 3), fill_value=(255, 255, 255), dtype=np.uint8)
         transformer = AffineFrameTransformer.rotate_full_frame(
-            20, False, NoOpTransformer((width, height)))
+            20, False, (0, 0, 0), NoOpTransformer((width, height)))
 
         transformed_img = transformer.transform_frame(img, 0)
 
@@ -138,7 +138,8 @@ class TestAffineTransformer(unittest.TestCase):
 
 
         for rotation in (0, 90, 180, 270):
-            transformer = AffineFrameTransformer.rotate_full_frame(rotation, False, NoOpTransformer(size))
+            transformer = AffineFrameTransformer.rotate_full_frame(rotation, False, (0, 0, 0),
+                                                                   NoOpTransformer(size))
             transformed_img = transformer.transform_frame(img, 0)
 
             num_white = count_matching_pixels(transformed_img, (255, 255, 255))
@@ -209,7 +210,8 @@ class TestAffineTransformer(unittest.TestCase):
         frame_width = 100
         frame_height = 200
 
-        transformer = AffineFrameTransformer.rotate_full_frame(0, True, NoOpTransformer((frame_width, frame_height)))
+        transformer = AffineFrameTransformer.rotate_full_frame(
+            0, True, (0, 0, 0), NoOpTransformer((frame_width, frame_height)))
 
         # Test without existing flip
         detection = mpf.ImageLocation(10, 20, 40, 50)
@@ -468,6 +470,21 @@ class TestAffineTransformer(unittest.TestCase):
         img = mpf_util.ImageReader(job).get_image()
         self.assertFalse(np.all(original_img == img))
 
+
+    def test_rotation_fill_color(self):
+        test_img_path = test_util.get_data_file_path('rotation/hello-world.png')
+
+        job = mpf.ImageJob('test', test_img_path, dict(ROTATION='45'), dict())
+        img = mpf_util.ImageReader(job).get_image()
+        self.assertTrue(np.all(img[0, 0] == (0, 0, 0)))
+
+        job.job_properties['ROTATION_FILL_COLOR'] = 'BLACK'
+        img = mpf_util.ImageReader(job).get_image()
+        self.assertTrue(np.all(img[0, 0] == (0, 0, 0)))
+
+        job.job_properties['ROTATION_FILL_COLOR'] = 'WHITE'
+        img = mpf_util.ImageReader(job).get_image()
+        self.assertTrue(np.all(img[0, 0] == (255, 255, 255)))
 
 
 def closest_color(sample):

@@ -27,7 +27,7 @@
 from __future__ import division, print_function
 
 import sys
-from typing import Dict, Iterable, Union
+from typing import Dict, Iterable, Mapping, Tuple, Union
 
 import mpf_component_api as mpf
 
@@ -86,8 +86,9 @@ def _add_transformers_if_needed(job_properties, media_properties, input_video_si
 
     search_region = _get_search_region(job_properties)
     if rotation_required or flip_required:
-        return AffineFrameTransformer.search_region_on_rotated_frame(rotation, flip_required, search_region,
-                                                                     current_transformer)
+        return AffineFrameTransformer.search_region_on_rotated_frame(
+            rotation, flip_required, _get_fill_color(job_properties), search_region,
+            current_transformer)
 
     frame_rect = utils.Rect.from_corner_and_size((0, 0), input_video_size)
     search_region_rect = search_region.get_rect(input_video_size)
@@ -152,13 +153,15 @@ def _add_feed_forward_transforms_if_needed(job_properties, media_properties, tra
 
     if is_exact_region_mode:
         if any_detection_requires_rotation_or_flip:
-            return FeedForwardExactRegionAffineTransformer(regions, current_transformer)
+            return FeedForwardExactRegionAffineTransformer(regions, _get_fill_color(job_properties),
+                                                           current_transformer)
         else:
             return FeedForwardFrameCropper(detections, current_transformer)
     else:
         if any_detection_requires_rotation_or_flip:
             return AffineFrameTransformer.rotated_superset_region(
-                regions, job_level_rotation, job_level_flip, current_transformer)
+                regions, job_level_rotation, job_level_flip, _get_fill_color(job_properties),
+                current_transformer)
         else:
             superset_region = _get_superset_region_no_rotation(regions)
             return SearchRegionFrameCropper(superset_region, current_transformer)
@@ -205,6 +208,17 @@ def _feed_forward_is_enabled(job_properties):
     return _feed_forward_superset_region_is_enabled(job_properties) \
            or _feed_forward_exact_region_is_enabled(job_properties)
 
+
+def _get_fill_color(job_properties: Mapping[str, str]) -> Tuple[int, int, int]:
+    fill_color_name = job_properties.get('ROTATION_FILL_COLOR', 'BLACK')
+    if fill_color_name == 'BLACK':
+        return (0, 0, 0)
+    elif fill_color_name == 'WHITE':
+        return (255, 255, 255)
+    else:
+        raise mpf.DetectionError.INVALID_PROPERTY.exception(
+            'Expected the "ROTATION_FILL_COLOR" property to be either "BLACK" or "WHITE", '
+            f'but it was set to "{fill_color_name}".')
 
 
 def _get_search_region(job_properties):
