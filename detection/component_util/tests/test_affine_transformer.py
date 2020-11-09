@@ -253,6 +253,9 @@ class TestAffineTransformer(unittest.TestCase):
         self.assertTrue(mpf_util.rotation_angles_equal(angle1, angle3))
         self.assertTrue(mpf_util.rotation_angles_equal(angle1, angle4))
         self.assertTrue(mpf_util.rotation_angles_equal(angle1, angle5))
+        self.assertTrue(mpf_util.rotation_angles_equal(359, 0, 10))
+        self.assertTrue(mpf_util.rotation_angles_equal(359, 5, 10))
+        self.assertFalse(mpf_util.rotation_angles_equal(359, 12, 10))
 
         self.assertEqual(0, mpf_util.normalize_angle(0))
         self.assertEqual(0, mpf_util.normalize_angle(360))
@@ -434,6 +437,36 @@ class TestAffineTransformer(unittest.TestCase):
         self.assertNotIn('HORIZONTAL_FLIP', il.detection_properties)
         self.assertAlmostEqual(frame_rotation, float(il.detection_properties['ROTATION']))
 
+
+    def test_rotation_threshold(self):
+        test_img_path = test_util.get_data_file_path('rotation/hello-world.png')
+        original_img = cv2.imread(test_img_path)
+
+        job = mpf.ImageJob('test', test_img_path,
+                           dict(ROTATION='10', ROTATION_THRESHOLD='10.001'), dict())
+        img = mpf_util.ImageReader(job).get_image()
+        self.assertTrue(np.all(original_img == img))
+
+        job.job_properties['ROTATION_THRESHOLD'] = '9.99'
+        img = mpf_util.ImageReader(job).get_image()
+        self.assertFalse(np.all(original_img == img))
+
+
+    def test_rotation_threshold_with_feed_forward(self):
+        test_img_path = test_util.get_data_file_path('rotation/hello-world.png')
+        original_img = cv2.imread(test_img_path)
+        ff_img_loc = mpf.ImageLocation(0, 0, original_img.shape[1], original_img.shape[0], -1,
+                                       dict(ROTATION='354.9'))
+
+        job = mpf.ImageJob('test', test_img_path,
+                           dict(ROTATION_THRESHOLD='5.12', FEED_FORWARD_TYPE='REGION'),
+                           dict(), ff_img_loc)
+        img = mpf_util.ImageReader(job).get_image()
+        self.assertTrue(np.all(original_img == img))
+
+        job.job_properties['ROTATION_THRESHOLD'] = '5.00'
+        img = mpf_util.ImageReader(job).get_image()
+        self.assertFalse(np.all(original_img == img))
 
 
 
