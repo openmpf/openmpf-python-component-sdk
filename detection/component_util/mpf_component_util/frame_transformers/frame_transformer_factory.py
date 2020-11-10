@@ -210,7 +210,11 @@ def _feed_forward_is_enabled(job_properties):
 
 
 def _get_fill_color(job_properties: Mapping[str, str]) -> Tuple[int, int, int]:
-    fill_color_name = job_properties.get('ROTATION_FILL_COLOR', 'BLACK')
+    fill_color_name = job_properties.get('ROTATION_FILL_COLOR')
+    if not fill_color_name:
+        return (0, 0, 0)
+
+    fill_color_name = fill_color_name.upper()
     if fill_color_name == 'BLACK':
         return (0, 0, 0)
     elif fill_color_name == 'WHITE':

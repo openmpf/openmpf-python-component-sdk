@@ -447,11 +447,11 @@ class TestAffineTransformer(unittest.TestCase):
         job = mpf.ImageJob('test', test_img_path,
                            dict(ROTATION='10', ROTATION_THRESHOLD='10.001'), dict())
         img = mpf_util.ImageReader(job).get_image()
-        self.assertTrue(np.all(original_img == img))
+        self.assertTrue(np.array_equal(original_img, img))
 
         job.job_properties['ROTATION_THRESHOLD'] = '9.99'
         img = mpf_util.ImageReader(job).get_image()
-        self.assertFalse(np.all(original_img == img))
+        self.assertFalse(np.array_equal(original_img, img))
 
 
     def test_rotation_threshold_with_feed_forward(self):
@@ -464,11 +464,11 @@ class TestAffineTransformer(unittest.TestCase):
                            dict(ROTATION_THRESHOLD='5.12', FEED_FORWARD_TYPE='REGION'),
                            dict(), ff_img_loc)
         img = mpf_util.ImageReader(job).get_image()
-        self.assertTrue(np.all(original_img == img))
+        self.assertTrue(np.array_equal(original_img, img))
 
         job.job_properties['ROTATION_THRESHOLD'] = '5.00'
         img = mpf_util.ImageReader(job).get_image()
-        self.assertFalse(np.all(original_img == img))
+        self.assertFalse(np.array_equal(original_img, img))
 
 
     def test_rotation_fill_color(self):
@@ -476,15 +476,15 @@ class TestAffineTransformer(unittest.TestCase):
 
         job = mpf.ImageJob('test', test_img_path, dict(ROTATION='45'), dict())
         img = mpf_util.ImageReader(job).get_image()
-        self.assertTrue(np.all(img[0, 0] == (0, 0, 0)))
+        self.assertTrue(np.array_equal(img[0, 0], (0, 0, 0)))
 
         job.job_properties['ROTATION_FILL_COLOR'] = 'BLACK'
         img = mpf_util.ImageReader(job).get_image()
-        self.assertTrue(np.all(img[0, 0] == (0, 0, 0)))
+        self.assertTrue(np.array_equal(img[0, 0], (0, 0, 0)))
 
         job.job_properties['ROTATION_FILL_COLOR'] = 'WHITE'
         img = mpf_util.ImageReader(job).get_image()
-        self.assertTrue(np.all(img[0, 0] == (255, 255, 255)))
+        self.assertTrue(np.array_equal(img[0, 0], (255, 255, 255)))
 
 
 def closest_color(sample):
