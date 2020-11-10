@@ -197,14 +197,16 @@ def _get_superset_region_no_rotation(regions: Iterable[utils.RotatedRect]) -> ut
 def _search_region_cropping_is_enabled(job_properties):
     return utils.get_property(job_properties, 'SEARCH_REGION_ENABLE_DETECTION', False)
 
-def _feed_forward_exact_region_is_enabled(job_properties):
-    return 'REGION' == utils.get_property(job_properties, 'FEED_FORWARD_TYPE', '')
+def _feed_forward_exact_region_is_enabled(job_properties: Mapping[str, str]) -> bool:
+    ff_type = job_properties.get('FEED_FORWARD_TYPE')
+    return 'REGION' == ff_type.upper() if ff_type else False
 
-def _feed_forward_superset_region_is_enabled(job_properties):
-    return 'SUPERSET_REGION' == utils.get_property(job_properties, 'FEED_FORWARD_TYPE', '')
+def _feed_forward_superset_region_is_enabled(job_properties: Mapping[str, str]) -> bool:
+    ff_type = job_properties.get('FEED_FORWARD_TYPE')
+    return 'SUPERSET_REGION' == ff_type.upper() if ff_type else False
 
 
-def _feed_forward_is_enabled(job_properties):
+def _feed_forward_is_enabled(job_properties: Mapping[str, str]) -> bool:
     return _feed_forward_superset_region_is_enabled(job_properties) \
            or _feed_forward_exact_region_is_enabled(job_properties)
 
