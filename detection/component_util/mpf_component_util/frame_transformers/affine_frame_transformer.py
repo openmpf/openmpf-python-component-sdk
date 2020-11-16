@@ -25,10 +25,12 @@
 #############################################################################
 
 import functools
-from typing import Sequence, Iterable
+from typing import Sequence, Iterable, Tuple
 
 import cv2
 import numpy as np
+
+import mpf_component_api as mpf
 
 from .frame_transformer import BaseDecoratedFrameTransformer, IFrameTransformer
 from .. import utils
@@ -40,28 +42,36 @@ class AffineFrameTransformer(BaseDecoratedFrameTransformer):
                  regions: Sequence[utils.RotatedRect],
                  frame_rotation: float,
                  frame_flip: bool,
+                 fill_color: Tuple[int, int, int],
                  search_region: SearchRegion,
                  inner_transform: IFrameTransformer):
         super().__init__(inner_transform)
-        self.__transform = _AffineTransformation(regions, frame_rotation, frame_flip, search_region)
+        self.__transform = _AffineTransformation(regions, frame_rotation, frame_flip, fill_color,
+                                                 search_region)
 
     @staticmethod
-    def search_region_on_rotated_frame(rotation: float, flip: bool, search_region: SearchRegion,
-                                       inner_transform: IFrameTransformer) -> 'AffineFrameTransformer':
+    def search_region_on_rotated_frame(rotation: float, flip: bool,
+                                       fill_color: Tuple[int, int, int],
+                                       search_region: SearchRegion,
+                                       inner_transform: IFrameTransformer
+                                       ) -> 'AffineFrameTransformer':
         return AffineFrameTransformer(
             _full_frame(inner_transform.get_frame_size(0)),
-            rotation, flip, search_region, inner_transform)
+            rotation, flip, fill_color, search_region, inner_transform)
 
     @staticmethod
-    def rotate_full_frame(rotation, flip, inner_transform):
+    def rotate_full_frame(rotation: float, flip: bool, fill_color: Tuple[int, int, int],
+                          inner_transform: IFrameTransformer) -> 'AffineFrameTransformer':
         return AffineFrameTransformer(
             _full_frame(inner_transform.get_frame_size(0)),
-            rotation, flip, SearchRegion(), inner_transform)
+            rotation, flip, fill_color, SearchRegion(), inner_transform)
 
     @staticmethod
-    def rotated_superset_region(regions, frame_rotation, frame_flip, inner_transform):
-        return AffineFrameTransformer(regions, frame_rotation, frame_flip, SearchRegion(), inner_transform)
-
+    def rotated_superset_region(regions: Sequence[utils.RotatedRect], frame_rotation: float,
+                                frame_flip: bool, fill_color: Tuple[int, int, int],
+                                inner_transform: IFrameTransformer) -> 'AffineFrameTransformer':
+        return AffineFrameTransformer(regions, frame_rotation, frame_flip, fill_color,
+                                      SearchRegion(), inner_transform)
 
     def _do_frame_transform(self, frame, frame_index):
         return self.__transform.apply(frame)
@@ -75,9 +85,10 @@ class AffineFrameTransformer(BaseDecoratedFrameTransformer):
 
 
 class FeedForwardExactRegionAffineTransformer(BaseDecoratedFrameTransformer):
-    def __init__(self, regions: Iterable[utils.RotatedRect], inner_transform: IFrameTransformer):
+    def __init__(self, regions: Iterable[utils.RotatedRect], fill_color: Tuple[int, int, int],
+                 inner_transform: IFrameTransformer):
         super().__init__(inner_transform)
-        self.__frame_transforms = [self.__create_transformation(r) for r in regions]
+        self.__frame_transforms = [self.__create_transformation(r, fill_color) for r in regions]
 
     def _do_frame_transform(self, frame, frame_index):
         return self.__get_transform(frame_index).apply(frame)
@@ -97,9 +108,11 @@ class FeedForwardExactRegionAffineTransformer(BaseDecoratedFrameTransformer):
                 .format(frame_index, len(self.__frame_transforms)))
 
     @staticmethod
-    def __create_transformation(region: utils.RotatedRect):
+    def __create_transformation(region: utils.RotatedRect,
+                                fill_color: Tuple[int, int, int]) -> '_AffineTransformation':
         frame_rotation = 360 - region.rotation if region.flip else region.rotation
-        return _AffineTransformation((region,), frame_rotation, region.flip, SearchRegion())
+        return _AffineTransformation((region,), frame_rotation, region.flip, fill_color,
+                                     SearchRegion())
 
 
 
@@ -108,12 +121,17 @@ def _full_frame(frame_size: utils.Size) -> Sequence[utils.RotatedRect]:
 
 
 class _AffineTransformation(object):
-    def __init__(self, pre_transform_regions, frame_rotation_degrees, flip, post_transform_search_region):
+    def __init__(self,
+                 pre_transform_regions: Sequence[utils.RotatedRect],
+                 frame_rotation_degrees: float,
+                 flip: bool, fill_color: Tuple[int, int, int],
+                 post_transform_search_region: SearchRegion):
         if len(pre_transform_regions) == 0:
             raise IndexError('The "preTransformRegions" parameter must contain at least one element, but it was empty')
 
         self.__rotation_degrees = frame_rotation_degrees
         self.__flip = flip
+        self.__fill_color = fill_color
 
         # Rotating an image around the origin will move some or all of the pixels out of the frame.
         rotation_mat = _IndividualXForms.rotation(360 - frame_rotation_degrees)
@@ -154,7 +172,7 @@ class _AffineTransformation(object):
         self.__reverse_transformation_matrix = cv2.invertAffineTransform(combined_2d_transform)
 
 
-    def apply(self, frame):
+    def apply(self, frame: np.ndarray) -> np.ndarray:
         # From cv::warpAffine docs:
         # The function warpAffine transforms the source image using the specified matrix when the flag
         # WARP_INVERSE_MAP is set. Otherwise, the transformation is first inverted with cv::invertAffineTransform.
@@ -166,10 +184,11 @@ class _AffineTransformation(object):
         # "This transform relocates pixels requiring intensity interpolation to approximate the value of moved pixels,
         # bicubic interpolation is the standard for image transformations in image processing applications."
         return cv2.warpAffine(frame, self.__reverse_transformation_matrix, self.__region_size,
-                              flags=cv2.WARP_INVERSE_MAP | cv2.INTER_CUBIC)
+                              flags=cv2.WARP_INVERSE_MAP | cv2.INTER_CUBIC,
+                              borderMode=cv2.BORDER_CONSTANT, borderValue=self.__fill_color)
 
 
-    def apply_reverse(self, image_location):
+    def apply_reverse(self, image_location: mpf.ImageLocation) -> None:
         top_left = np.array((image_location.x_left_upper, image_location.y_left_upper, 1.0), dtype=float)
         new_top_left = np.matmul(self.__reverse_transformation_matrix, top_left)
 
@@ -190,12 +209,13 @@ class _AffineTransformation(object):
                 image_location.detection_properties['HORIZONTAL_FLIP'] = 'true'
 
 
-    def get_region_size(self):
+    def get_region_size(self) -> utils.Size:
         return self.__region_size
 
 
     @staticmethod
-    def __get_mapped_bounding_rect(regions, frame_rot_mat):
+    def __get_mapped_bounding_rect(regions: Sequence[utils.RotatedRect],
+                                   frame_rot_mat: np.ndarray) -> utils.Rect:
         # Since we are working with 2d points and we aren't doing any translation here,
         # we can drop the last row and column to save some work.
         simple_rotation = frame_rot_mat[:2, :2]
@@ -205,9 +225,8 @@ class _AffineTransformation(object):
         return utils.Rect.from_corners(corner1, corner2 + 1)
 
 
-
     @staticmethod
-    def __get_all_corners(regions: Iterable[utils.RotatedRect]):
+    def __get_all_corners(regions: Iterable[utils.RotatedRect]) -> np.ndarray:
         # Matrix containing each region's 4 corners. First row is x coordinate and second row is y coordinate.
         return np.transpose(np.vstack([r.corners for r in regions]))
 
@@ -220,7 +239,7 @@ class _IndividualXForms(object):
 
     # Returns a matrix that will rotate points the given number of degrees in the counter-clockwise direction.
     @staticmethod
-    def rotation(rotation_degrees):
+    def rotation(rotation_degrees: float) -> np.ndarray:
         if utils.rotation_angles_equal(rotation_degrees, 0):
             # When rotation angle is 0 some matrix elements that should
             # have been 0 were actually 1e-16 due to rounding issues.
@@ -236,7 +255,7 @@ class _IndividualXForms(object):
         ))
 
     @staticmethod
-    def horizontal_flip():
+    def horizontal_flip() -> np.ndarray:
         return np.array((
             (-1, 0, 0),
             (0, 1, 0),
@@ -244,7 +263,7 @@ class _IndividualXForms(object):
         ))
 
     @staticmethod
-    def translation(x_distance, y_distance):
+    def translation(x_distance: float, y_distance: float) -> np.ndarray:
         return np.array((
             (1, 0, x_distance),
             (0, 1, y_distance),

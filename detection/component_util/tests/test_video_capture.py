@@ -543,6 +543,12 @@ class FrameFilterTest(unittest.TestCase):
         self.assertFalse(was_read, 'If this test fails, then a bug with OpenCV has been fixed. See test for details')
 
 
+    def test_can_set_frame_position_on_ts_file(self):
+        cap = mpf_util.VideoCapture(test_util.get_data_file_path('bbb24p_00_short.ts'))
+        self.assertTrue(cap.set_frame_position(7))
+        frame = next(cap)
+        self.assertGreater(frame.size, 0)
+
 
     def test_mpf_video_capture_does_not_have_set_frame_position_issue(self):
         # This test verifies that mpf_util.VideoCapture does not have the same issue demonstrated in the

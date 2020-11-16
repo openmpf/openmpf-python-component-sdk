@@ -79,7 +79,14 @@ def normalize_angle(angle: float) -> float:
     return 360 + angle
 
 def rotation_angles_equal(a1: float, a2: float, epsilon=0.1) -> bool:
-    return abs(normalize_angle(a1) - normalize_angle(a2)) < epsilon
+    a1 = normalize_angle(a1)
+    a2 = normalize_angle(a2)
+    if abs(a1 - a2) < epsilon:
+        return True
+    else:
+        a1_dist = min(a1, 360 - a1)
+        a2_dist = min(a2, 360 - a2)
+        return (a1_dist + a2_dist) < epsilon
 
 
 IntOrFloat = Union[int, float]

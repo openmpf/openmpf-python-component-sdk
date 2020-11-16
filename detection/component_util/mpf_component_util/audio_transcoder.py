@@ -24,39 +24,31 @@
 # limitations under the License.                                            #
 #############################################################################
 
-from io import BytesIO
 import os
 import subprocess
 from typing import Optional
 
-from pydub.audio_segment import fix_wav_headers
+import pydub.audio_segment
 
 import mpf_component_api as mpf
 
-logger = mpf.configure_logging('audio-ripper.log', __name__ == '__main__')
 
-def transcode_to_wav(filepath: str, start_time: float = 0, stop_time: Optional[float] = None) -> bytes:
+def transcode_to_wav(filepath: str, start_time: float = 0,
+                     stop_time: Optional[float] = None) -> bytes:
     """
-    Transcodes the audio contained in filepath (can be an audio or video file)
-    from from start_time to stop_time to WAVE format using ffmpeg, and returns it as a byte string (read from a BytesIO object).
+    Transcodes the audio contained in filepath (can be an audio or video file) from
+    start_time to stop_time to WAVE format using ffmpeg, and returns it as a bytes object
 
     :param filepath: The path to the file (job.data_uri).
-    :param start_time: The time (in milliseconds) associated with the beginning of audio segment. Default 0.
-    :param stop_time: The time (in milliseconds) associated with the end of the audio segment. To go to the end of the file, pass None. Default None.
+    :param start_time: The time (in milliseconds) associated with the beginning of audio segment.
+                       Default 0.
+    :param stop_time: The time (in milliseconds) associated with the end of the audio segment.
+                      To go to the end of the file, pass None. Default None.
     """
-    logger.info((
-            'Reading and transcoding audio in {filepath:s} to WAVE format.'
-        ).format(
-            filepath=filepath,
-        )
-    )
 
-    # Resolve symbolic path if necessary
-    filepath = os.path.realpath(filepath)
-
-    # Confirm that input file exists
-    if not os.path.isfile(filepath):
-        raise ValueError("Input file does not exist: " + filepath)
+    if not os.path.exists(filepath):
+        raise mpf.DetectionError.COULD_NOT_OPEN_DATAFILE.exception(
+            'Input file does not exist: ' + filepath)
 
     # Construct ffmpeg call
     # Note: ffmpeg options apply to the next specified file. Order matters.
@@ -68,68 +60,50 @@ def transcode_to_wav(filepath: str, start_time: float = 0, stop_time: Optional[f
     #  directly, and only use pydub to fix headers in the output bytes.
     command = ['ffmpeg', '-i', filepath]
     if start_time and start_time > 0:
-        command += ['-ss', str(start_time/1000.0)]  # Audio clip start time
+        command += ['-ss', str(start_time / 1000.0)]  # Audio clip start time
     if stop_time and stop_time > 0:
-        command += ['-to', str(stop_time/1000.0)]   # Audio clip end time
+        command += ['-to', str(stop_time / 1000.0)]  # Audio clip end time
     command += [
-        '-ac', '1',                                 # Channels
-        '-ar', '8000',                              # Sampling rate
-        '-acodec', 'pcm_s16le',                     # Audio codec
-        '-af', 'highpass=f=200,lowpass=f=3000',     # Audio filter graph
-        '-f', 'wav',                                # Save as WAV file
-        '-vn',                                      # Disable video
-        '-y',                                       # Overwrite output files
-        '-loglevel', 'error',                       # Suppress logs
-        '-'                                         # Send output to stdout
+        '-ac', '1',  # Channels
+        '-ar', '8000',  # Sampling rate
+        '-acodec', 'pcm_s16le',  # Audio codec
+        '-af', 'highpass=f=200,lowpass=f=3000',  # Audio filter graph
+        '-f', 'wav',  # Save as WAV file
+        '-vn',  # Disable video
+        '-y',  # Overwrite output files
+        '-loglevel', 'error',  # Suppress logs
+        '-'  # Send output to stdout
     ]
 
-    # Call ffmpeg
     try:
-        proc = subprocess.Popen(
-            command,
-            stdin=None,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
-        )
-    except OSError as err:
-        # 2 corresponds to errno.ENOENT (no such file or directory)
-        if err.errno == 2:
-            raise EnvironmentError(
-                err.errno,
-                'ffmpeg does not appear to be installed'
-            )
-        else:
-            raise err
+        proc = subprocess.run(command, capture_output=True, check=True)
+        if len(proc.stdout) == 0:
+            raise mpf.DetectionError.COULD_NOT_READ_DATAFILE.exception(
+                'The ffmpeg process exited without error, but failed to produce any audio data.')
 
-    # Wait for ffmpeg to complete, get stdout and stderr
-    p_out, p_err = proc.communicate()
+        output = bytearray(proc.stdout)
+        # If WAVE headers are not fixed, downstream processors may refuse to read
+        #  the data, as the file appears to be invalid (maximum wav data size)
+        pydub.audio_segment.fix_wav_headers(output)
+        return bytes(output)
 
-    # If we get a nonzero exit status, raise exception
-    exit_code = proc.returncode
-    if exit_code != 0:
+    except subprocess.CalledProcessError as err:
         error_msg = 'The ffmpeg process exited '
-        if exit_code > 0:
-            error_msg += 'with exit code: {c:d}.'.format(c=exit_code)
+        if err.returncode > 0:
+            error_msg += f'with exit code: {err.returncode}.'
         else:
             # When exit code is negative, it is the signal number that
             # caused the process to exit
-            error_msg += 'due to signal number: {c:d}.'.format(c=-exit_code)
-            exit_code = 128 - exit_code
-        if p_err:
-            error_msg += ' Error message: {e:s}'.format(e=p_err.decode('utf-8'))
-        logger.error(error_msg)
-        raise EnvironmentError(exit_code, error_msg)
-    elif len(p_out) == 0:
-        error_msg = "The ffmpeg process exited without error, but failed to produce any audio data."
-        logger.error(error_msg)
-        raise ValueError(error_msg)
+            error_msg += f'due to signal number: {-err.returncode}.'
+        if err.stderr:
+            decoded_stderr = err.stderr.decode('utf-8')
+            error_msg += f' Error message: {decoded_stderr}'
 
-    p_out = bytearray(p_out)
+        if 'does not contain any stream' in error_msg:
+            raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(error_msg) from err
+        else:
+            raise mpf.DetectionError.COULD_NOT_READ_DATAFILE.exception(error_msg) from err
 
-    # If WAVE headers are not fixed, downstream processors may refuse to read
-    #  the data, as the file appears to be invalid (maximum wav data size)
-    fix_wav_headers(p_out)
 
-    bytes_io = BytesIO(p_out)
-    bytes_io.seek(0)
-    return bytes_io.read()
+
+

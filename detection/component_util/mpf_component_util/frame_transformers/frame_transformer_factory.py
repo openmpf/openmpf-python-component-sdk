@@ -27,7 +27,7 @@
 from __future__ import division, print_function
 
 import sys
-from typing import Dict, Iterable, Union
+from typing import Dict, Iterable, Mapping, Tuple, Union
 
 import mpf_component_api as mpf
 
@@ -73,7 +73,11 @@ def _add_transformers_if_needed(job_properties, media_properties, input_video_si
     else:
         rotation = utils.get_property(job_properties, 'ROTATION', 0.0)
     rotation = utils.normalize_angle(rotation)
-    rotation_required = not utils.rotation_angles_equal(rotation, 0)
+
+    rotation_threshold = utils.get_property(job_properties, 'ROTATION_THRESHOLD', 0.1)
+    rotation_required = not utils.rotation_angles_equal(rotation, 0, rotation_threshold)
+    if not rotation_required:
+        rotation = 0
 
     if utils.get_property(job_properties, 'AUTO_FLIP', False):
         flip_required = utils.get_property(media_properties, 'HORIZONTAL_FLIP', False)
@@ -82,8 +86,9 @@ def _add_transformers_if_needed(job_properties, media_properties, input_video_si
 
     search_region = _get_search_region(job_properties)
     if rotation_required or flip_required:
-        return AffineFrameTransformer.search_region_on_rotated_frame(rotation, flip_required, search_region,
-                                                                     current_transformer)
+        return AffineFrameTransformer.search_region_on_rotated_frame(
+            rotation, flip_required, _get_fill_color(job_properties), search_region,
+            current_transformer)
 
     frame_rect = utils.Rect.from_corner_and_size((0, 0), input_video_size)
     search_region_rect = search_region.get_rect(input_video_size)
@@ -110,9 +115,11 @@ def _add_feed_forward_transforms_if_needed(job_properties, media_properties, tra
     has_track_level_flip = 'HORIZONTAL_FLIP' in track_properties
     track_level_flip = utils.get_property(track_properties, 'HORIZONTAL_FLIP', False)
 
-    requires_rotation_or_flip = False
+    rotation_threshold = utils.get_property(job_properties, 'ROTATION_THRESHOLD', 0.1)
+    any_detection_requires_rotation_or_flip = False
     is_exact_region_mode = _feed_forward_exact_region_is_enabled(job_properties)
     regions = []
+
     for detection in detections.values():
         has_detection_level_rotation = 'ROTATION' in detection.detection_properties
         rotation = 0.0
@@ -122,31 +129,39 @@ def _add_feed_forward_transforms_if_needed(job_properties, media_properties, tra
             rotation = track_rotation
         elif has_job_level_rotation and is_exact_region_mode:
             rotation = job_level_rotation
+        current_detection_requires_rotation = not utils.rotation_angles_equal(rotation, 0,
+                                                                              rotation_threshold)
+        if not current_detection_requires_rotation:
+            rotation = 0
 
         has_detection_level_flip = 'HORIZONTAL_FLIP' in detection.detection_properties
-        flip = False
+        current_detection_requires_flip = False
         if has_detection_level_flip:
-            flip = utils.get_property(detection.detection_properties, 'HORIZONTAL_FLIP', False)
+            current_detection_requires_flip = utils.get_property(
+                detection.detection_properties, 'HORIZONTAL_FLIP', False)
         elif has_track_level_flip:
-            flip = track_level_flip
+            current_detection_requires_flip = track_level_flip
         elif has_job_level_flip and is_exact_region_mode:
-            flip = job_level_flip
+            current_detection_requires_flip = job_level_flip
 
-        if flip or not utils.rotation_angles_equal(0, rotation):
-            requires_rotation_or_flip = True
+        if current_detection_requires_flip or current_detection_requires_rotation:
+            any_detection_requires_rotation_or_flip = True
 
         regions.append(utils.RotatedRect(
-            detection.x_left_upper, detection.y_left_upper, detection.width, detection.height, rotation, flip))
+            detection.x_left_upper, detection.y_left_upper, detection.width, detection.height,
+            rotation, current_detection_requires_flip))
 
     if is_exact_region_mode:
-        if requires_rotation_or_flip:
-            return FeedForwardExactRegionAffineTransformer(regions, current_transformer)
+        if any_detection_requires_rotation_or_flip:
+            return FeedForwardExactRegionAffineTransformer(regions, _get_fill_color(job_properties),
+                                                           current_transformer)
         else:
             return FeedForwardFrameCropper(detections, current_transformer)
     else:
-        if requires_rotation_or_flip:
+        if any_detection_requires_rotation_or_flip:
             return AffineFrameTransformer.rotated_superset_region(
-                regions, job_level_rotation, job_level_flip, current_transformer)
+                regions, job_level_rotation, job_level_flip, _get_fill_color(job_properties),
+                current_transformer)
         else:
             superset_region = _get_superset_region_no_rotation(regions)
             return SearchRegionFrameCropper(superset_region, current_transformer)
@@ -182,17 +197,34 @@ def _get_superset_region_no_rotation(regions: Iterable[utils.RotatedRect]) -> ut
 def _search_region_cropping_is_enabled(job_properties):
     return utils.get_property(job_properties, 'SEARCH_REGION_ENABLE_DETECTION', False)
 
-def _feed_forward_exact_region_is_enabled(job_properties):
-    return 'REGION' == utils.get_property(job_properties, 'FEED_FORWARD_TYPE', '')
+def _feed_forward_exact_region_is_enabled(job_properties: Mapping[str, str]) -> bool:
+    ff_type = job_properties.get('FEED_FORWARD_TYPE')
+    return 'REGION' == ff_type.upper() if ff_type else False
 
-def _feed_forward_superset_region_is_enabled(job_properties):
-    return 'SUPERSET_REGION' == utils.get_property(job_properties, 'FEED_FORWARD_TYPE', '')
+def _feed_forward_superset_region_is_enabled(job_properties: Mapping[str, str]) -> bool:
+    ff_type = job_properties.get('FEED_FORWARD_TYPE')
+    return 'SUPERSET_REGION' == ff_type.upper() if ff_type else False
 
 
-def _feed_forward_is_enabled(job_properties):
+def _feed_forward_is_enabled(job_properties: Mapping[str, str]) -> bool:
     return _feed_forward_superset_region_is_enabled(job_properties) \
            or _feed_forward_exact_region_is_enabled(job_properties)
 
+
+def _get_fill_color(job_properties: Mapping[str, str]) -> Tuple[int, int, int]:
+    fill_color_name = job_properties.get('ROTATION_FILL_COLOR')
+    if not fill_color_name:
+        return (0, 0, 0)
+
+    fill_color_name = fill_color_name.upper()
+    if fill_color_name == 'BLACK':
+        return (0, 0, 0)
+    elif fill_color_name == 'WHITE':
+        return (255, 255, 255)
+    else:
+        raise mpf.DetectionError.INVALID_PROPERTY.exception(
+            'Expected the "ROTATION_FILL_COLOR" property to be either "BLACK" or "WHITE", '
+            f'but it was set to "{fill_color_name}".')
 
 
 def _get_search_region(job_properties):
