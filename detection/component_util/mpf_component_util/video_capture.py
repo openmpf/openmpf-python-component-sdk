@@ -25,8 +25,9 @@
 #############################################################################
 
 import abc
+import functools
 import sys
-from typing import Iterable, Tuple, Optional, Sequence
+from typing import Iterable, Tuple, Optional, Sequence, Union
 
 import cv2
 import numpy as np
@@ -38,8 +39,15 @@ import mpf_component_api as mpf
 
 
 class VideoCapture(Iterable[np.ndarray]):
-    def __init__(self, video_job: mpf.VideoJob, enable_frame_transformers: bool = True,
-                 enable_frame_filtering: bool = True):
+
+    @functools.singledispatchmethod
+    def __init__(self, arg: Union[mpf.VideoJob, str]):
+        raise NotImplementedError()
+
+
+    @__init__.register
+    def _(self, video_job: mpf.VideoJob, enable_frame_transformers: bool = True,
+          enable_frame_filtering: bool = True):
         """
         Initializes a new VideoCapture instance, using the frame transformers specified in job_properties,
         to be used for video processing jobs.
@@ -48,6 +56,7 @@ class VideoCapture(Iterable[np.ndarray]):
         :param enable_frame_transformers: Automatically transform frames based on job properties
         :param enable_frame_filtering: Automatically skip frames based on job properties
         """
+        self.__video_path = video_job.data_uri
         self.__cv_video_capture = cv2.VideoCapture(video_job.data_uri)
         if not self.__cv_video_capture.isOpened():
             raise mpf.DetectionError.COULD_NOT_OPEN_DATAFILE.exception('Failed to open "%s".' % video_job.data_uri)
@@ -62,6 +71,11 @@ class VideoCapture(Iterable[np.ndarray]):
         self.__frame_position = 0
 
         self.set_frame_position(0)
+
+
+    @__init__.register
+    def _(self, video_path: str):
+        self.__init__(mpf.VideoJob('', video_path, 0, -1, {}, {}), False, False)
 
 
     def read(self) -> Tuple[bool, Optional[np.ndarray]]:
@@ -282,15 +296,10 @@ class VideoCapture(Iterable[np.ndarray]):
         if self.__seek_strategy is None:
             return False
 
-        # In order to fallback to a different seek strategy, self.__cv_video_capture must be capable of setting the
-        # frame position to 0.
-        was_set = self.__set_property(cv2.CAP_PROP_POS_FRAMES, 0)
-        if was_set:
-            self.__frame_position = 0
-            return True
-
-        self.__seek_strategy = None
-        return False
+        self.__frame_position = 0
+        self.__cv_video_capture.release()
+        self.__cv_video_capture = cv2.VideoCapture(self.__video_path)
+        return self.__cv_video_capture.isOpened()
 
 
     def __update_original_frame_position(self, requested_original_position):
@@ -340,7 +349,7 @@ class VideoCapture(Iterable[np.ndarray]):
         if utils.get_property(video_job.job_properties, 'USE_KEY_FRAMES', False):
             try:
                 return frame_filters.KeyFrameFilter(video_job)
-            except EnvironmentError as err:
+            except OSError as err:
                 print('Unable to get key frames due to:', err, file=sys.stderr)
                 print('Falling back to IntervalFrameFilter', file=sys.stderr)
 

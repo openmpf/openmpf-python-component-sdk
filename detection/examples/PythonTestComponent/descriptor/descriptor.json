@@ -1,7 +1,7 @@
 {
   "componentName": "PythonTestComponent",
-  "componentVersion": "5.0",
-  "middlewareVersion": "5.0",
+  "componentVersion": "5.1",
+  "middlewareVersion": "5.1",
   "sourceLanguage": "python",
   "batchLibrary": "${MPF_HOME}/plugins/PythonTestComponent/test_component.py",
   "environmentVariables": [],

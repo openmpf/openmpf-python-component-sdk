@@ -84,15 +84,7 @@ class KeyFrameFilter(_FrameListFilter):
     def get_key_frames(video_job):
         command = ('ffprobe', '-loglevel', 'warning', '-select_streams', 'v', '-show_entries', 'frame=key_frame',
                    '-print_format', 'flat=h=0', video_job.data_uri)
-        try:
-            proc = subprocess.Popen(command, text=True, stdout=subprocess.PIPE)
-        except OSError as err:
-            if err.errno == 2:
-                raise EnvironmentError(err.errno, 'ffprobe does not appear to be installed')
-            else:
-                raise
-
-        with proc:
+        with subprocess.Popen(command, text=True, stdout=subprocess.PIPE) as proc:
             key_frames: List[int] = []
             num_key_frames_seen = 0
             frame_interval = max(1, utils.get_property(video_job.job_properties, 'FRAME_INTERVAL', 1))
@@ -134,5 +126,4 @@ class KeyFrameFilter(_FrameListFilter):
             else:
                 # When exit code is negative, it is the number of the signal that caused the process exit.
                 error_msg += 'exited due to signal number: %s.' % (-1 * exit_code)
-                exit_code = 128 - exit_code
-            raise EnvironmentError(exit_code, error_msg)
+            raise ChildProcessError(error_msg)
