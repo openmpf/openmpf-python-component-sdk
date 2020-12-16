@@ -37,7 +37,7 @@ setuptools.setup(
     packages=setuptools.find_packages(exclude=('*test*',)),
     install_requires=(
         'mpf_component_api>=5.1',
-        'opencv-python>=3.3',
+        'opencv-python>=4.4.0',
         'pydub'
     ),
     test_suite='tests',
