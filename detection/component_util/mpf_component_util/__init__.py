@@ -34,3 +34,5 @@ from .models_ini_parser import (ModelsIniParser, ModelNotFoundError, ModelsIniEr
                                 ModelEmptyPathError, ModelMissingRequiredFieldError, ModelTypeConversionError)
 
 from .utils import *
+
+from .http_retry import HttpRetry
