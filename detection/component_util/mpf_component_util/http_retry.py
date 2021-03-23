@@ -47,7 +47,7 @@ class HttpRetry:
         return cls(
             mpf_util.get_property(properties, 'COMPONENT_HTTP_RETRY_MAX_ATTEMPTS', 10),
             mpf_util.get_property(properties, 'COMPONENT_HTTP_RETRY_INITIAL_DELAY_MS', 200),
-            mpf_util.get_property(properties, 'COMPONENT_HTTP_RETRY_MAX_DELAY_MS', 30),
+            mpf_util.get_property(properties, 'COMPONENT_HTTP_RETRY_MAX_DELAY_MS', 30_000),
             printer)
 
 
@@ -64,12 +64,19 @@ class HttpRetry:
                 if remaining_attempts == 0:
                     raise mpf.DetectionError.DETECTION_FAILED.exception(message) from e
 
-                if retry_after_header := self._get_retry_after_header_ms(e):
-                    delay = max(delay, retry_after_header)
+                retry_after_header = self._get_retry_after_header_ms(e)
+                if retry_after_header and retry_after_header > delay:
+                    delay = retry_after_header
+                    self._printer(message +
+                                  f' There are {remaining_attempts} remaining attempts and the '
+                                  f'next one will begin in {delay} milliseconds because the '
+                                  f'Retry-After header was set to {retry_after_header // 1000} '
+                                  '(seconds).')
+                else:
+                    self._printer(message +
+                                  f' There are {remaining_attempts} remaining attempts and the '
+                                  f'next one will begin in {delay} milliseconds.')
 
-                self._printer(message +
-                              f' There are {remaining_attempts} remaining attempts and the '
-                              f'next one will begin in {delay} milliseconds.')
                 time.sleep(delay / 1000)
                 delay = min(2 * delay, self._max_delay_ms)
 
