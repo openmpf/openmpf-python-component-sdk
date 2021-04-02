@@ -24,12 +24,12 @@
 # limitations under the License.                                            #
 #############################################################################
 
-from __future__ import division, print_function
+import logging
 
 import mpf_component_api as mpf
 
 
-logger = mpf.configure_logging('python-test.log', __name__ == '__main__')
+logger = logging.getLogger('TestComponent')
 
 
 class TestComponent(object):

@@ -24,8 +24,7 @@
 # limitations under the License.                                            #
 #############################################################################
 
-from __future__ import division, print_function
-
+import logging
 import pkg_resources
 import os
 
@@ -33,7 +32,7 @@ import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
 
-logger = mpf.configure_logging('python-ocv-test.log', __name__ == '__main__')
+logger = logging.getLogger('OcvComponent')
 
 
 class OcvComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, object):
