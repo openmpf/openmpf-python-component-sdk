@@ -29,14 +29,14 @@ import setuptools
 
 setuptools.setup(
     name='PythonOcvComponent',
-    version='6.0',
+    version='6.1',
     packages=setuptools.find_packages(),
     package_data={
         '': ['models/*']
     },
     install_requires=(
-        'mpf_component_api>=6.0',
-        'mpf_component_util>=6.0'
+        'mpf_component_api>=6.1',
+        'mpf_component_util>=6.1'
     ),
     entry_points={
         'mpf.exported_component': 'component = ocv_component.ocv_component:OcvComponent'
