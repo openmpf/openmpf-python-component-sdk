@@ -33,17 +33,28 @@ import pydub.audio_segment
 import mpf_component_api as mpf
 
 
-def transcode_to_wav(filepath: str, start_time: float = 0,
-                     stop_time: Optional[float] = None) -> bytes:
+def transcode_to_wav(
+        filepath: str,
+        start_time: float = 0,
+        stop_time: Optional[float] = None,
+        highpass: int = 200,
+        lowpass: int = 3000) -> bytes:
     """
-    Transcodes the audio contained in filepath (can be an audio or video file) from
-    start_time to stop_time to WAVE format using ffmpeg, and returns it as a bytes object
+    Transcodes the audio contained in filepath (can be an audio or video file)
+    from start_time to stop_time to WAVE format using ffmpeg, and returns it as
+    a bytes object
 
     :param filepath: The path to the file (job.data_uri).
-    :param start_time: The time (in milliseconds) associated with the beginning of audio segment.
-                       Default 0.
-    :param stop_time: The time (in milliseconds) associated with the end of the audio segment.
-                      To go to the end of the file, pass None. Default None.
+    :param start_time: The time (in milliseconds) associated with the beginning
+        of audio segment. Default 0.
+    :param stop_time: The time (in milliseconds) associated with the end of the
+        audio segment. To go to the end of the file, pass None. Default None.
+    :param highpass: Apply a double-pole high-pass filter with 3dB point
+        frequency. The filter roll off at 6dB per pole per octave (20dB per
+        pole per decade). Pass None to disable.
+    :param lowpass: Apply a double-pole low-pass filter with 3dB point
+        frequency. The filter roll off at 6dB per pole per octave (20dB per
+        pole per decade). Pass None to disable.
     """
 
     if not os.path.exists(filepath):
@@ -67,7 +78,18 @@ def transcode_to_wav(filepath: str, start_time: float = 0,
         '-ac', '1',  # Channels
         '-ar', '8000',  # Sampling rate
         '-acodec', 'pcm_s16le',  # Audio codec
-        '-af', 'highpass=f=200,lowpass=f=3000',  # Audio filter graph
+    ]
+
+    # Apply filtergraph unless highpass or lowpass both None
+    if highpass or lowpass:
+        filtergraph = []
+        if highpass:
+            filtergraph.append(f'highpass=f={highpass}')
+        if lowpass:
+            filtergraph.append(f'lowpass=f={lowpass}')
+        command += ['-af', ','.join(filtergraph)]
+
+    command += [
         '-f', 'wav',  # Save as WAV file
         '-vn',  # Disable video
         '-y',  # Overwrite output files
@@ -79,11 +101,13 @@ def transcode_to_wav(filepath: str, start_time: float = 0,
         proc = subprocess.run(command, capture_output=True, check=True)
         if len(proc.stdout) == 0:
             raise mpf.DetectionError.COULD_NOT_READ_DATAFILE.exception(
-                'The ffmpeg process exited without error, but failed to produce any audio data.')
+                'The ffmpeg process exited without error, but failed to produce'
+                ' any audio data.')
 
         output = bytearray(proc.stdout)
-        # If WAVE headers are not fixed, downstream processors may refuse to read
-        #  the data, as the file appears to be invalid (maximum wav data size)
+        # If WAVE headers are not fixed, downstream processors may refuse to
+        #  read the data, as the file appears to be invalid
+        #  (maximum wav data size)
         pydub.audio_segment.fix_wav_headers(output)
         return bytes(output)
 
@@ -103,7 +127,3 @@ def transcode_to_wav(filepath: str, start_time: float = 0,
             raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(error_msg) from err
         else:
             raise mpf.DetectionError.COULD_NOT_READ_DATAFILE.exception(error_msg) from err
-
-
-
-
