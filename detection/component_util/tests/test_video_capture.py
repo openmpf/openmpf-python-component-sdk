@@ -31,6 +31,8 @@ import unittest
 
 import cv2
 
+import numpy as np
+
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 from mpf_component_util.frame_filters import FeedForwardFrameFilter, IntervalFrameFilter, seek_strategies
@@ -541,6 +543,25 @@ class FrameFilterTest(unittest.TestCase):
 
         was_read, _ = cv_cap.read()
         self.assertFalse(was_read, 'If this test fails, then a bug with OpenCV has been fixed. See test for details')
+
+
+    def test_vfr_handling(self):
+        target_frame = 40
+        vfr_cap = mpf_util.VideoCapture(mpf.VideoJob(
+            'Test', VIDEO_WITH_SET_FRAME_ISSUE, target_frame, 82, {}, {}))
+        cfr_cap = mpf_util.VideoCapture(mpf.VideoJob(
+            'Test', VIDEO_WITH_SET_FRAME_ISSUE, target_frame, 82, {},
+            {'HAS_CONSTANT_FRAME_RATE': 'true'}))
+
+        vfr_frame = next(vfr_cap)
+        cfr_frame = next(cfr_cap)
+        self.assertFalse(np.array_equal(vfr_frame, cfr_frame))
+
+        sequential_cap = cv2.VideoCapture(VIDEO_WITH_SET_FRAME_ISSUE)
+        for i in range(target_frame):
+            sequential_cap.grab()
+        sequential_frame = sequential_cap.read()[1]
+        self.assertTrue(np.array_equal(vfr_frame, sequential_frame))
 
 
     def test_can_set_frame_position_on_ts_file(self):

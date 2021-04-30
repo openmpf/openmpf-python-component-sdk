@@ -63,7 +63,10 @@ class VideoCapture(Iterable[np.ndarray]):
 
         self.__frame_filter = self.__get_frame_filter(enable_frame_filtering, video_job, self.__cv_video_capture)
         self.__frame_transformer = self.__get_frame_transformer(enable_frame_transformers, video_job)
-        self.__seek_strategy = frame_filters.SetFramePositionSeek()
+        if utils.get_property(video_job.media_properties, 'HAS_CONSTANT_FRAME_RATE', False):
+            self.__seek_strategy = frame_filters.SetFramePositionSeek()
+        else:
+            self.__seek_strategy = frame_filters.GrabSeek()
 
         # VideoCapture keeps track of the frame position instead of depending on
         # cv2.VideoCapture.get(cv2.CAP_PROP_POS_FRAMES) because for certain videos

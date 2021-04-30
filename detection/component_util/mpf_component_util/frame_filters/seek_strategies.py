@@ -34,9 +34,19 @@ import cv2
 # properly it will fallback to different SeekStrategy.
 
 class SetFramePositionSeek(object):
-    @staticmethod
-    def change_position(cv_video_cap, current_position, requested_position):
-        if cv_video_cap.set(cv2.CAP_PROP_POS_FRAMES, requested_position):
+    # When setting frame position, OpenCV sets the frame position to 16 frames before the requested
+    # frame in order to locate the closest key frame. Once OpenCV locates the key frame, it uses
+    # cv2.VideoCapture.grab to advance cv2.VideoCapture's position. This means that when you need
+    # to advance 16 or fewer frames, it is more efficient to just use cv2.VideoCapture.grab.
+    # https://github.com/opencv/opencv/blob/4.5.0/modules/videoio/src/cap_ffmpeg_impl.hpp#L1459
+    SET_POS_MIN_FRAMES = 16
+
+    @classmethod
+    def change_position(cls, cv_video_cap, current_position, requested_position):
+        frame_diff = requested_position - current_position
+        if 0 < frame_diff <= cls.SET_POS_MIN_FRAMES:
+            return GrabSeek.change_position(cv_video_cap, current_position, requested_position)
+        elif cv_video_cap.set(cv2.CAP_PROP_POS_FRAMES, requested_position):
             return requested_position
         else:
             return current_position
@@ -49,7 +59,8 @@ class SetFramePositionSeek(object):
 
 
 class _SequentialSeek(object):
-    def change_position(self, cv_video_cap, current_position, requested_position):
+    @classmethod
+    def change_position(cls, cv_video_cap, current_position, requested_position):
         new_position_in_future = requested_position > current_position
         if new_position_in_future:
             start = current_position
@@ -65,7 +76,7 @@ class _SequentialSeek(object):
 
         num_success = 0
         for i in range(num_frames_to_discard):
-            if self._advance(cv_video_cap):
+            if cls._advance(cv_video_cap):
                 num_success += 1
             else:
                 break
