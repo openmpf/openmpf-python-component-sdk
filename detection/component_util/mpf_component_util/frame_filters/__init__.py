@@ -26,7 +26,7 @@
 
 from .interval_frame_filter import IntervalFrameFilter
 from .frame_list_filters import FeedForwardFrameFilter, KeyFrameFilter
-from .seek_strategies import SetFramePositionSeek
+from .seek_strategies import SetFramePositionSeek, GrabSeek
 
 
 def get_no_op_filter(frame_count):
