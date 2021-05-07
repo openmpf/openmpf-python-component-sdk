@@ -40,12 +40,13 @@ class ImageReader(object):
     def __init__(self, image_job: mpf.ImageJob):
         video_cap = cv2.VideoCapture(image_job.data_uri)
         if not video_cap.isOpened():
-            raise mpf.DetectionError.COULD_NOT_OPEN_DATAFILE.exception('Failed to open "%s".' % image_job.data_uri)
+            raise mpf.DetectionError.COULD_NOT_READ_MEDIA.exception(
+                f'Failed to open "{image_job.data_uri}".')
 
         was_read, image = video_cap.read()
         if not was_read or image is None:
-            raise mpf.DetectionError.COULD_NOT_READ_DATAFILE.exception(
-                'Failed to read image from "%s".' % image_job.data_uri)
+            raise mpf.DetectionError.COULD_NOT_READ_MEDIA.exception(
+                f'Failed to read image from "{image_job.data_uri}".')
 
         size = utils.Size.from_frame(image)
         self.__frame_transformer = frame_transformers.factory.get_transformer(image_job, size)
