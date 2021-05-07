@@ -72,6 +72,7 @@ class TestHttpRetry(unittest.TestCase):
         with self.assertRaises(mpf.DetectionException) as e_ctx:
             retry.urlopen('http://example.com')
 
+        self.assertEqual(mpf.DetectionError.NETWORK_ERROR, e_ctx.exception.error_code)
         self.assertIn('asdf', str(e_ctx.exception))
         self.assertIn('http://example.com', str(e_ctx.exception))
 
@@ -169,6 +170,7 @@ class TestHttpRetry(unittest.TestCase):
 
         with self.assertRaises(mpf.DetectionException) as e_ctx:
             retry.urlopen('http://example.com')
+        self.assertEqual(mpf.DetectionError.NETWORK_ERROR, e_ctx.exception.error_code)
         self.assertIn('10', str(e_ctx.exception))
 
         self.assertEqual(10, self._mock_urlopen.call_count)

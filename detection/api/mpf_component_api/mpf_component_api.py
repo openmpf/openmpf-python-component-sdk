@@ -129,6 +129,8 @@ class DetectionError(enum.IntEnum):
     INVALID_ROTATION = 21
     MEMORY_ALLOCATION_FAILED = 22
     GPU_ERROR = 23
+    NETWORK_ERROR = 24
+    COULD_NOT_READ_MEDIA = 25
 
     def exception(self, message: str) -> 'DetectionException':
         return DetectionException(message, self)
