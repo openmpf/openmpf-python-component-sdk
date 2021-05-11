@@ -59,7 +59,8 @@ class VideoCapture(Iterable[np.ndarray]):
         self.__video_path = video_job.data_uri
         self.__cv_video_capture = cv2.VideoCapture(video_job.data_uri)
         if not self.__cv_video_capture.isOpened():
-            raise mpf.DetectionError.COULD_NOT_OPEN_DATAFILE.exception('Failed to open "%s".' % video_job.data_uri)
+            raise mpf.DetectionError.COULD_NOT_READ_MEDIA.exception(
+                f'Failed to open "{video_job.data_uri}".')
 
         self.__frame_filter = self.__get_frame_filter(enable_frame_filtering, video_job, self.__cv_video_capture)
         self.__frame_transformer = self.__get_frame_transformer(enable_frame_transformers, video_job)

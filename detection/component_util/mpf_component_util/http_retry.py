@@ -62,7 +62,7 @@ class HttpRetry:
                 remaining_attempts -= 1
                 message = self._get_failure_message(url, e)
                 if remaining_attempts == 0:
-                    raise mpf.DetectionError.DETECTION_FAILED.exception(message) from e
+                    raise mpf.DetectionError.NETWORK_ERROR.exception(message) from e
 
                 retry_after_header = self._get_retry_after_header_ms(e)
                 if retry_after_header and retry_after_header > delay:
