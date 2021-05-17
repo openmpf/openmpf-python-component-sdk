@@ -33,6 +33,8 @@ import pydub.audio_segment
 import mpf_component_api as mpf
 
 
+_ERROR_MESSAGE_MAX_LENGTH = 5000
+
 def transcode_to_wav(
         filepath: str,
         start_time: float = 0,
@@ -122,6 +124,9 @@ def transcode_to_wav(
         if err.stderr:
             decoded_stderr = err.stderr.decode('utf-8')
             error_msg += f' Error message: {decoded_stderr}'
+
+        if len(error_msg) > _ERROR_MESSAGE_MAX_LENGTH:
+            error_msg = error_msg[:_ERROR_MESSAGE_MAX_LENGTH] + ' <truncated>'
 
         if 'does not contain any stream' in error_msg:
             raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(error_msg) from err
