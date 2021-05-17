@@ -34,6 +34,7 @@ import tempfile
 import shutil
 import os
 
+import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
 
@@ -151,13 +152,16 @@ path_field=other_file.txt
 
 
     def test_throws_when_file_not_found(self):
-        self.assertRaises(mpf_util.ModelFileNotFoundError, self._ModelSettings, 'test model', self._common_models_dir)
+        with self.assertRaises(mpf_util.ModelFileNotFoundError) as err:
+            self._ModelSettings('test model', self._common_models_dir)
+        self.assertEqual(mpf.DetectionError.COULD_NOT_OPEN_DATAFILE, err.exception.error_code)
 
 
     def test_unknown_model(self):
         with self.assertRaises(mpf_util.ModelNotFoundError) as err:
             self._ModelSettings('not a model', self._common_models_dir)
 
+        self.assertEqual(mpf.DetectionError.COULD_NOT_OPEN_DATAFILE, err.exception.error_code)
         self.assertEqual('not a model', err.exception.requested_model)
         self.assertSetEqual({'test model', 'other model', 'empty path model', 'missing fields model'},
                             set(err.exception.available_models))
@@ -166,13 +170,15 @@ path_field=other_file.txt
         with self.assertRaises(mpf_util.ModelEmptyPathError) as err:
             self._ModelSettings('empty path model', self._common_models_dir)
 
+        self.assertEqual(mpf.DetectionError.COULD_NOT_READ_DATAFILE, err.exception.error_code)
         self.assertEqual('empty path model', err.exception.model_name)
         self.assertEqual('path_field', err.exception.field_name)
 
 
     def test_throws_when_missing_required_field(self):
-        with self.assertRaises(mpf_util.ModelMissingRequiredFieldError):
+        with self.assertRaises(mpf_util.ModelMissingRequiredFieldError) as err:
             self._ModelSettings('missing fields model', self._common_models_dir)
+        self.assertEqual(mpf.DetectionError.COULD_NOT_READ_DATAFILE, err.exception.error_code)
 
 
     def test_uses_values_from_ini_file_when_field_is_optional_and_in_ini_file(self):
@@ -210,8 +216,9 @@ path_field=other_file.txt
                          .register_optional_path_field('path_field', 'test_file.txt')
                          .build_class())
 
-        with self.assertRaises(mpf_util.ModelFileNotFoundError):
+        with self.assertRaises(mpf_util.ModelFileNotFoundError) as err:
             ModelSettings('missing fields model', self._common_models_dir)
+        self.assertEqual(mpf.DetectionError.COULD_NOT_OPEN_DATAFILE, err.exception.error_code)
 
         test_file_path = os.path.join(self._plugin_models_dir, 'test_file.txt')
         with open(os.path.join(test_file_path), 'w') as f:
@@ -224,7 +231,8 @@ path_field=other_file.txt
 
 
     def test_throws_when_type_conversion_fails(self):
-        with self.assertRaises(mpf_util.ModelTypeConversionError):
+        with self.assertRaises(mpf_util.ModelTypeConversionError) as err:
             (mpf_util.ModelsIniParser(self._plugin_models_dir)
                 .register_int_field('string_field')
                 .build_class()('test model', self._common_models_dir))
+        self.assertEqual(mpf.DetectionError.COULD_NOT_READ_DATAFILE, err.exception.error_code)

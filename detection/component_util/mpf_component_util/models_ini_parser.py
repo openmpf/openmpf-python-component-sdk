@@ -28,6 +28,8 @@ import configparser
 import os
 from typing import Any, Collection, Callable, List, Optional
 
+import mpf_component_api as mpf
+
 
 class ModelsIniParser(object):
     def __init__(self, plugin_models_dir: str):
@@ -78,15 +80,20 @@ class ModelsIniParser(object):
 
                 for field_info in fields:
                     try:
-                        field_info.set_field(config, model_name, self, plugin_models_dir, common_models_dir)
-                    except configparser.NoSectionError:
-                        raise ModelNotFoundError(models_ini_full_path, model_name, config.sections())
-                    except configparser.NoOptionError:
-                        raise ModelMissingRequiredFieldError(models_ini_full_path, model_name, field_info.name)
-                    except _PathEmptyError:
-                        raise ModelEmptyPathError(models_ini_full_path, model_name, field_info.name)
+                        field_info.set_field(config, model_name, self, plugin_models_dir,
+                                             common_models_dir)
+                    except configparser.NoSectionError as e:
+                        raise ModelNotFoundError(models_ini_full_path, model_name,
+                                                 config.sections()) from e
+                    except configparser.NoOptionError as e:
+                        raise ModelMissingRequiredFieldError(models_ini_full_path, model_name,
+                                                             field_info.name) from e
+                    except _PathEmptyError as e:
+                        raise ModelEmptyPathError(models_ini_full_path, model_name,
+                                                  field_info.name) from e
                     except _TypeConversionError as e:
-                        raise ModelTypeConversionError(models_ini_full_path, model_name, field_info.name, str(e))
+                        raise ModelTypeConversionError(models_ini_full_path, model_name,
+                                                       field_info.name, str(e)) from e
         return ModelSettings
 
 
@@ -122,7 +129,7 @@ class _FieldInfo(object):
                 string_value = config.get(model_name, self.name)
                 converted_value = self.convert_value(string_value, plugin_models_dir, common_models_dir)
             except ValueError as e:
-                raise _TypeConversionError(str(e))
+                raise _TypeConversionError(str(e)) from e
         else:
             converted_value = self.convert_default_value(self._default_value, plugin_models_dir, common_models_dir)
 
@@ -156,16 +163,22 @@ class _TypeConversionError(Exception):
 
 
 
-class ModelsIniError(Exception):
+class ModelsIniError(mpf.DetectionException):
     pass
 
 
 class ModelNotFoundError(ModelsIniError):
-    def __init__(self, models_ini_path, requested_model, available_models):
-        super(ModelNotFoundError, self).__init__(
-            'Failed to load the requested model named "%s", because it was not one of the models listed in the model '
-            'configuration file located at "%s". The available models are %s'
-            % (requested_model, models_ini_path, available_models))
+    models_ini_path: str
+    requested_model: str
+    available_models: Collection[str]
+
+    def __init__(self, models_ini_path: str, requested_model: str,
+                 available_models: Collection[str]):
+        super().__init__(
+            f'Failed to load the requested model named "{requested_model}", '
+            f'because it was not one of the models listed in the model configuration file located '
+            f'at "{models_ini_path}". The available models are {available_models}',
+            mpf.DetectionError.COULD_NOT_OPEN_DATAFILE)
         self.models_ini_path = models_ini_path
         self.requested_model = requested_model
         self.available_models = available_models
@@ -173,42 +186,61 @@ class ModelNotFoundError(ModelsIniError):
 
 
 class ModelEmptyPathError(ModelsIniError):
-    def __init__(self, models_ini_path, model_name, field_name):
-        super(ModelEmptyPathError, self).__init__(
-            'Failed to the load the requested model named "%s", '
-            'because the "%s" field was empty in the [%s] section of the configuration file located at "%s"'
-            % (model_name, field_name, model_name, models_ini_path))
+    models_ini_path: str
+    model_name: str
+    field_name: str
+
+    def __init__(self, models_ini_path: str, model_name: str, field_name: str):
+        super().__init__(
+            f'Failed to the load the requested model named "{model_name}", '
+            f'because the "{field_name}" field was empty in the [{model_name}] section of the '
+            f'configuration file located at "{models_ini_path}"',
+            mpf.DetectionError.COULD_NOT_READ_DATAFILE)
         self.models_ini_path = models_ini_path
         self.model_name = model_name
         self.field_name = field_name
 
 
 class ModelMissingRequiredFieldError(ModelsIniError):
-    def __init__(self, models_ini_path, model_name, field_name):
-        super(ModelMissingRequiredFieldError, self).__init__(
-            'Failed to the load the requested model named "%s", '
-            'because the "%s" field was not present in the [%s] section of the configuration file located at "%s"'
-            % (model_name, field_name, model_name, models_ini_path))
+    models_ini_path: str
+    model_name: str
+    field_name: str
+
+    def __init__(self, models_ini_path: str, model_name: str, field_name: str):
+        super().__init__(
+            f'Failed to the load the requested model named "{model_name}", '
+            f'because the "{field_name}" field was not present in the [{model_name}] section of '
+            f'the configuration file located at "{models_ini_path}"',
+            mpf.DetectionError.COULD_NOT_READ_DATAFILE)
         self.models_ini_path = models_ini_path
         self.model_name = model_name
         self.field_name = field_name
 
 
-class ModelFileNotFoundError(IOError, ModelsIniError):
-    def __init__(self, possible_locations):
-        super(ModelFileNotFoundError, self).__init__(
+class ModelFileNotFoundError(ModelsIniError, IOError):
+    possible_locations: Collection[str]
+
+    def __init__(self, possible_locations: Collection[str]):
+        super(ModelsIniError, self).__init__(
             'Failed to load model because a required file was not present. '
-            'Expected a file to exist at one of the following locations: %s' % (possible_locations,))
+            f'Expected a file to exist at one of the following locations: {possible_locations}',
+            mpf.DetectionError.COULD_NOT_OPEN_DATAFILE)
         self.possible_locations = possible_locations
 
 
 class ModelTypeConversionError(ModelsIniError):
-    def __init__(self, models_ini_path, model_name, field_name, reason):
-        super(ModelTypeConversionError, self).__init__(
-            'Failed to the load the requested model named "%s", '
-            'because the "%s" field in the [%s] section of the configuration file located at "%s" was not able to '
-            'be converted to the specified type due to: %s'
-            % (model_name, field_name, model_name, models_ini_path, reason))
+    models_ini_path: str
+    model_name: str
+    field_name: str
+    reason: str
+
+    def __init__(self, models_ini_path: str, model_name: str, field_name: str, reason: str):
+        super().__init__(
+            f'Failed to the load the requested model named "{model_name}", '
+            f'because the "{field_name}" field in the [{model_name}] section of the configuration '
+            f'file located at "{models_ini_path}" was not able to be converted to the specified '
+            f'type due to: {reason}',
+            mpf.DetectionError.COULD_NOT_READ_DATAFILE)
         self.models_ini_path = models_ini_path
         self.model_name = model_name
         self.field_name = field_name
