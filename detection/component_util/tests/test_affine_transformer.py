@@ -471,6 +471,16 @@ class TestAffineTransformer(unittest.TestCase):
         self.assertFalse(np.array_equal(original_img, img))
 
 
+    def test_rotation_threshold_with_feed_forward_and_negative_coordinate(self):
+        ff_loc = mpf.ImageLocation(-10, 20, 50, 30, 1, dict(ROTATION='0.5'))
+        job = mpf.ImageJob(
+            'Test job', test_util.get_data_file_path('test_img.png'),
+            dict(FEED_FORWARD_TYPE='REGION', ROTATION_THRESHOLD='1'),
+            dict(), ff_loc)
+        img = mpf_util.ImageReader(job).get_image()
+        self.assertEqual(img.shape, (30, 40, 3))
+
+
     def test_rotation_fill_color(self):
         test_img_path = test_util.get_data_file_path('rotation/hello-world.png')
 
