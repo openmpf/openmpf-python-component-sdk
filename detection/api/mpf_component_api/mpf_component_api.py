@@ -116,10 +116,11 @@ class DetectionError(enum.IntEnum):
     DETECTION_FAILED = 8
     INVALID_PROPERTY = 9
     MISSING_PROPERTY = 10
-    GPU_ERROR = 11
-    NETWORK_ERROR = 12
-    COULD_NOT_OPEN_MEDIA = 13
-    COULD_NOT_READ_MEDIA = 14
+    MEMORY_ALLOCATION_FAILED = 11
+    GPU_ERROR = 12
+    NETWORK_ERROR = 13
+    COULD_NOT_OPEN_MEDIA = 14
+    COULD_NOT_READ_MEDIA = 15
 
     def exception(self, message: str) -> 'DetectionException':
         return DetectionException(message, self)
