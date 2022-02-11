@@ -27,39 +27,43 @@
 import logging
 import pkg_resources
 import os
+from typing import Iterable
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
-
 logger = logging.getLogger('OcvComponent')
 
-
-class OcvComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin, object):
+class OcvComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
     detection_type = 'TEST OCV DETECTION TYPE'
 
 
-    @staticmethod
-    def get_detections_from_image_reader(image_job, image_reader):
+    def get_detections_from_image_reader(
+            self,
+            image_job: mpf.ImageJob,
+            image_reader: mpf_util.ImageReader) -> Iterable[mpf.ImageLocation]:
+
         logger.info('[%s] Received image job: %s', image_job.job_name, image_job)
         model = get_model(image_job)  # A real component would use the model.
 
         img = image_reader.get_image()
 
         height, width, _ = img.shape
-        logger.info('[%s] Image at %s: width = %s, height = %s', image_job.job_name, image_job.data_uri, width, height)
+        logger.info('[%s] Image at %s: width = %s, height = %s',
+                    image_job.job_name, image_job.data_uri, width, height)
 
         detection_sz = 20
-        yield mpf.ImageLocation(width / 2 - detection_sz, 0, detection_sz, height - 1, -1.0,
+        yield mpf.ImageLocation(width // 2 - detection_sz, 0, detection_sz, height - 1, -1.0,
                                 dict(METADATA='full_height'))
 
-        yield mpf.ImageLocation(0, 0, width / 4, height / 4, -1,
+        yield mpf.ImageLocation(0, 0, width // 4, height // 4, -1,
                                 dict(METADATA='top left corner, .25 width and .25 height of image'))
 
 
-
-    @staticmethod
-    def get_detections_from_video_capture(video_job, video_capture):
+    def get_detections_from_video_capture(
+            self,
+            video_job: mpf.VideoJob,
+            video_capture: mpf_util.VideoCapture) -> Iterable[mpf.VideoTrack]:
         logger.info('[%s] Received video job: %s', video_job.job_name, video_job)
         model = get_model(video_job)  # A real component would use the model.
 
