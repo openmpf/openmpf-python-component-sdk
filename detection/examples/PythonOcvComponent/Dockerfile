@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.2
+
 #############################################################################
 # NOTICE                                                                    #
 #                                                                           #
@@ -24,4 +26,16 @@
 # limitations under the License.                                            #
 #############################################################################
 
-from .ocv_component import OcvComponent
+ARG BUILD_REGISTRY
+ARG BUILD_TAG=latest
+FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
+
+RUN pip3 install --no-cache-dir 'opencv-python>=4.4.0'
+
+ARG RUN_TESTS=false
+
+RUN --mount=target=.,readwrite \
+    install-component.sh; \
+    if [ "${RUN_TESTS,,}" == true ]; then python tests/test_ocv_component.py; fi
+
+
