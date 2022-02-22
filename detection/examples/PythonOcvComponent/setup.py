@@ -36,7 +36,8 @@ setuptools.setup(
     },
     install_requires=(
         'mpf_component_api>=6.3',
-        'mpf_component_util>=6.3'
+        'mpf_component_util>=6.3',
+        'opencv-python'
     ),
     entry_points={
         'mpf.exported_component': 'component = ocv_component.ocv_component:OcvComponent'
