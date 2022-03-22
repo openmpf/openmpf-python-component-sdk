@@ -42,23 +42,30 @@ def transcode_to_wav(
         lowpass: Optional[int] = 3000,
         start_time: Optional[float] = None,
         stop_time: Optional[float] = None,
-        *segments: Tuple[float, float]) -> bytes:
+        segments: Optional[List[Tuple[float, float]]] = None) -> bytes:
     """
     Transcodes the audio contained in filepath (can be an audio or video file)
     from start_time to stop_time to WAVE format using ffmpeg, and returns it as
     a bytes object
 
     :param filepath: The path to the file (job.data_uri).
-    :param start_time: The time (in milliseconds) associated with the beginning
-        of audio segment. Default 0.
-    :param stop_time: The time (in milliseconds) associated with the end of the
-        audio segment. To go to the end of the file, pass None. Default None.
     :param highpass: Apply a double-pole high-pass filter with 3dB point
         frequency. The filter roll off at 6dB per pole per octave (20dB per
         pole per decade). Pass None to disable.
     :param lowpass: Apply a double-pole low-pass filter with 3dB point
         frequency. The filter roll off at 6dB per pole per octave (20dB per
         pole per decade). Pass None to disable.
+    :param start_time: The time (in milliseconds) associated with the beginning
+        of audio segment. Default None.
+    :param stop_time: The time (in milliseconds) associated with the end of the
+        audio segment. To go to the end of the file, pass None. Default None.
+    :param segments: A list of segments to trim and concatenate from the audio
+        in advance of transcoding. Each segment is represented by a tuple pair
+        of start and stop time (in milliseconds). If either the start or stop
+        time in a pair is None, the segment will extend to the start or end of
+        the audio, respectively. If both are None, an exception will be raised.
+        An exception will also be raised if both segments and either start_time
+        and stop_time are supplied (which results in ambiguities).
     """
 
     if not os.path.exists(filepath):
