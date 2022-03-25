@@ -58,6 +58,7 @@ class VideoCapture(Iterable[np.ndarray]):
         """
         self.__video_path = video_job.data_uri
         self.__cv_video_capture = cv2.VideoCapture(video_job.data_uri)
+        self.__cv_video_capture.set(cv2.CAP_PROP_ORIENTATION_AUTO, 0)
         if not self.__cv_video_capture.isOpened():
             raise mpf.DetectionError.COULD_NOT_READ_MEDIA.exception(
                 f'Failed to open "{video_job.data_uri}".')
