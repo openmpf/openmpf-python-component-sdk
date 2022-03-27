@@ -38,10 +38,11 @@ _ERROR_MESSAGE_MAX_LENGTH = 5000
 
 def transcode_to_wav(
         filepath: str,
+        *,
         highpass: Optional[int] = 200,
         lowpass: Optional[int] = 3000,
-        start_time: Optional[float] = None,
-        stop_time: Optional[float] = None,
+        start_time: Optional[int] = None,
+        stop_time: Optional[int] = None,
         segments: Optional[List[Tuple[float, float]]] = None) -> bytes:
     """
     Transcodes the audio contained in filepath (can be an audio or video file)
@@ -63,9 +64,11 @@ def transcode_to_wav(
         in advance of transcoding. Each segment is represented by a tuple pair
         of start and stop time (in milliseconds). If either the start or stop
         time in a pair is None, the segment will extend to the start or end of
-        the audio, respectively. If both are None, an exception will be raised.
-        An exception will also be raised if both segments and either start_time
-        and stop_time are supplied (which results in ambiguities).
+        the audio, respectively.
+        If start_time and/or stop_time are supplied, the segments should be
+        relative to those times; i.e. the start_time will be added to each
+        segment time, and only segments within the start_time-stop_time span
+        will be included in the output.
     """
 
     if not os.path.exists(filepath):
@@ -91,8 +94,20 @@ def transcode_to_wav(
         trim_str = ""
         concat_str = ""
         for i, (t0, t1) in enumerate(segments):
-            if t0 is None and t1 is None:
-                raise ValueError("A segment cannot consist of two null values")
+            # Offset by start_time so that segments are relative to the full
+            #  audio file (not the trimmed waveform)
+            if start_time is not None:
+                t0 = t0 + start_time if t0 is not None else start_time
+                t1 = t1 + start_time if t1 is not None else t1
+
+            if stop_time is not None:
+                # If stop_time is before the segment, skip it
+                if t0 is not None and t0 >= stop_time:
+                    continue
+
+                # Limit to stop_time
+                if t1 is None or t1 > stop_time:
+                    t1 = stop_time
 
             # If either start or stop is not included, segment extends to limit
             if t0 is not None:
@@ -162,3 +177,71 @@ def transcode_to_wav(
             raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(error_msg) from err
         else:
             raise mpf.DetectionError.COULD_NOT_READ_DATAFILE.exception(error_msg) from err
+
+
+ISO6393_2_BCP47 = dict(
+    AMH="am-ET",
+    ARA="ar-EG",
+    # AZE="",
+    # BEL="",
+    # BEN="",
+    # BOD="",
+    BUL="bg-BG",
+    # CEB="",
+    CES="cs-CZ",
+    CMN="zh-CN",
+    ELL="el-GR",
+    ENG="en-US",
+    FRA="fr-FR",
+    # GUG="",
+    # HAT="",
+    # HAU="",
+    HBS="hr-HR",
+    HIN="hi-IN",
+    # HYE="",
+    IND="id-ID",
+    JAV="jv-ID",
+    JPN="ja-JP",
+    # KAT="",
+    # KAZ="",
+    # KIR="",
+    KOR="ko-KR",
+    # KUR="",
+    LAO="lo-LA",
+    LIT="lt-LT",
+    # LUO="",
+    MKD="mk-MK",
+    MYA="my-MM",
+    NAN="zh-CN", # Azure does not support Min Nan Chinese, default to Mandarin
+    # NDE="",
+    # ORM="",
+    # PAN="",
+    PES="fa-IR",
+    POL="pl-PL",
+    POR="pt-BR",
+    # PRS="",
+    # PUS="",
+    RON="ro-RO",
+    # RUN="",
+    RUS="ru-RU",
+    SLK="sk-SK",
+    # SNA="",
+    # SOM="",
+    SPA="es-MX",
+    # SQI="",
+    SWA="sw-KE",
+    TAM="ta-IN",
+    # TAT="",
+    # TGK="",
+    # TGL="",
+    THA="th-TH",
+    # TIR="",
+    # TPI="",
+    TUR="tr-TR",
+    UKR="uk-UA",
+    # URD="",
+    UZB="uz-UZ",
+    VIE="vi-VN",
+    YUE="zh-CN", # Azure does not support Yue Chinese, default to Mandarin
+    ZUL="zu-ZA"
+)
