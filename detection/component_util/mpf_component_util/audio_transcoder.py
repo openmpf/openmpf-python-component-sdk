@@ -117,8 +117,20 @@ def transcode_to_wav(
                 tr.append(f"end={t1 / 1000.0:f}")
             trim_str += f"[0:a]atrim={':'.join(tr)},asetpts=PTS-STARTPTS[a{i}];"
             concat_str += f"[a{i}]"
-        concat_str += f"concat=n={len(segments)}:v=0:a=1[out]"
-        command += ['-filter_complex', trim_str + concat_str, '-map', '[out]']
+        concat_str += f"concat=n={len(segments)}:v=0:a=1"
+        complex_str = trim_str + concat_str
+
+        # Apply filtergraph unless highpass or lowpass both None
+        if not (highpass is None and lowpass is None):
+            filtergraph = []
+            if highpass is not None:
+                filtergraph.append(f'highpass=f={highpass}')
+            if lowpass is not None:
+                filtergraph.append(f'lowpass=f={lowpass}')
+            complex_str += "[unf];[unf]" + ','.join(filtergraph)\
+
+        complex_str += "[out]"
+        command += ['-filter_complex', complex_str, '-map', '[out]']
 
     command += [
         '-ac', '1',  # Channels
@@ -126,8 +138,8 @@ def transcode_to_wav(
         '-acodec', 'pcm_s16le',  # Audio codec
     ]
 
-    # Apply filtergraph unless highpass or lowpass both None
-    if not (highpass is None and lowpass is None):
+    # Apply filtergraph (can't use -af and -filter_complex together)
+    if segments is None and not (highpass is None and lowpass is None):
         filtergraph = []
         if highpass is not None:
             filtergraph.append(f'highpass=f={highpass}')
