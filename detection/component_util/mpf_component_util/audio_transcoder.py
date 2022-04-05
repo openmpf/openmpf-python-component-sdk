@@ -89,7 +89,7 @@ def transcode_to_wav(
             command += ['-ss', str(start_time / 1000.0)]  # Audio clip start time
         if stop_time is not None and stop_time > 0:
             command += ['-to', str(stop_time / 1000.0)]  # Audio clip end time
-    elif start_time is None and stop_time is None:
+    else:
         # Construct complex filter to trim and concatenate audio
         trim_str = ""
         concat_str = ""
@@ -110,6 +110,7 @@ def transcode_to_wav(
                     t1 = stop_time
 
             # If either start or stop is not included, segment extends to limit
+            tr = []
             if t0 is not None:
                 tr.append(f"start={t0 / 1000.0:f}")
             if t1 is not None:
@@ -118,8 +119,6 @@ def transcode_to_wav(
             concat_str += f"[a{i}]"
         concat_str += f"concat=n={len(segments)}:v=0:a=1[out]"
         command += ['-filter_complex', trim_str + concat_str, '-map', '[out]']
-    else:
-        raise ValueError("Use of both segments and start/stop time is undefined")
 
     command += [
         '-ac', '1',  # Channels
