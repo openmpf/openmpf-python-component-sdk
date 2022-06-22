@@ -26,10 +26,6 @@
 
 import dataclasses
 import enum
-import logging
-import logging.handlers
-import os
-import sys
 from typing import Any, Dict, Mapping, NamedTuple, Optional
 
 
@@ -146,66 +142,3 @@ class DetectionException(Exception):
             return super().__str__()
 
 
-
-# Example log line: 2018-05-03 14:41:11,703 INFO  [test_component.py:44] - Logged message
-LOG_MESSAGE_FORMAT = '%(asctime)s %(levelname)-5s [%(filename)s:%(lineno)d] - %(message)s'
-
-def configure_logging(log_file_name: str, debug: bool = False, replace_existing_config: bool = False) -> logging.Logger:
-    # Change default level names to match what WFM expects
-    # Change default level name for logger.warn and logger.warning from 'WARNING' to 'WARN'
-    logging.addLevelName(logging.WARN, 'WARN')
-    # Change default level name for logger.fatal and logger.critical from 'CRITICAL' to 'FATAL'
-    logging.addLevelName(logging.FATAL, 'FATAL')
-
-    env_log_level = os.getenv('LOG_LEVEL')
-    error_msgs = []
-    if env_log_level:
-        # When the logging level exists, logging.getLevelName() returns the int value of that level.
-        # When the logging level does not exist, logging.getLevelName() returns a string like: "Level bad_level_name".
-        level = logging.getLevelName(env_log_level.upper())
-        if not isinstance(level, int):
-            error_msgs.append(f'The $LOG_LEVEL environment variable was set to "{env_log_level}", '
-                              'but that is not a valid a log level. Setting log level to DEBUG.')
-            level = logging.DEBUG
-    else:
-        level = logging.DEBUG if debug else logging.INFO
-
-    log_handlers = [logging.StreamHandler(sys.stdout)]
-    if not debug:
-        if log_file_name:
-            log_path = _get_full_log_path(log_file_name)
-            if log_path:
-                file_handler = logging.handlers.TimedRotatingFileHandler(log_path, when='midnight', delay=True)
-                log_handlers.append(file_handler)
-            else:
-                error_msgs.append(
-                    'Unable to determine full path to log file because the $MPF_LOG_PATH and/or $THIS_MPF_NODE '
-                    'environment variables were not set. Log messages will only be sent to standard out.')
-        else:
-            error_msgs.append('Unable to determine full path to log file because no file name was provided. '
-                              'Log messages will only be sent to standard out.')
-
-    # noinspection PyArgumentList
-    # ^ False positive
-    logging.basicConfig(format=LOG_MESSAGE_FORMAT, level=level, handlers=log_handlers, force=replace_existing_config)
-
-    logger = logging.getLogger(_get_log_name(log_file_name))
-    for error_msg in error_msgs:
-        logger.error(error_msg)
-    return logger
-
-
-def _get_full_log_path(filename):
-    if 'MPF_LOG_PATH' not in os.environ or 'THIS_MPF_NODE' not in os.environ:
-        return None
-
-    log_dir = os.path.expandvars('$MPF_LOG_PATH/$THIS_MPF_NODE/log')
-    if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
-    log_path = os.path.join(log_dir, filename)
-    return os.path.expandvars(log_path)
-
-
-def _get_log_name(filename):
-    log_name, _ = os.path.splitext(os.path.basename(filename if filename else ''))
-    return log_name if log_name else 'component_logger'

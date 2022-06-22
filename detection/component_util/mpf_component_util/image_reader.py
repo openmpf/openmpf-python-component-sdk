@@ -39,6 +39,7 @@ class ImageReader(object):
 
     def __init__(self, image_job: mpf.ImageJob):
         video_cap = cv2.VideoCapture(image_job.data_uri)
+        video_cap.set(cv2.CAP_PROP_ORIENTATION_AUTO, 0)
         if not video_cap.isOpened():
             raise mpf.DetectionError.COULD_NOT_OPEN_MEDIA.exception(
                 f'Failed to open "{image_job.data_uri}".')
