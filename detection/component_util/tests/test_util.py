@@ -48,6 +48,8 @@ def get_data_file_path(filename):
 
 
 def is_all_same_color(image, color_tuple):
+    if image.size <= 0:
+        raise ValueError(f'Image has a dimension with 0 size: {image.shape}')
     return (image == color_tuple).all()
 
 
