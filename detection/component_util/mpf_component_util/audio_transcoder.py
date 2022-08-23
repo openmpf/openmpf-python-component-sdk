@@ -91,8 +91,8 @@ def transcode_to_wav(
             command += ['-to', str(stop_time / 1000.0)]  # Audio clip end time
     else:
         # Construct complex filter to trim and concatenate audio
-        trim_str = ""
-        concat_str = ""
+        trim_str = []
+        concat_str = []
         for i, (t0, t1) in enumerate(segments):
             # Offset by start_time so that segments are relative to the full
             #  audio file (not the trimmed waveform)
@@ -115,9 +115,11 @@ def transcode_to_wav(
                 tr.append(f"start={t0 / 1000.0:f}")
             if t1 is not None:
                 tr.append(f"end={t1 / 1000.0:f}")
-            trim_str += f"[0:a]atrim={':'.join(tr)},asetpts=PTS-STARTPTS[a{i}];"
-            concat_str += f"[a{i}]"
-        concat_str += f"concat=n={len(segments)}:v=0:a=1"
+            tr = ':'.join(tr)
+            trim_str.append(f"[0:a]atrim={tr},asetpts=PTS-STARTPTS[a{i}];")
+            concat_str.append(f"[a{i}]")
+        trim_str = ''.join(trim_str)
+        concat_str = ''.join(concat_str) + f"concat=n={len(segments)}:v=0:a=1"
         complex_str = trim_str + concat_str
 
         # Apply filtergraph unless highpass or lowpass both None
@@ -127,7 +129,7 @@ def transcode_to_wav(
                 filtergraph.append(f'highpass=f={highpass}')
             if lowpass is not None:
                 filtergraph.append(f'lowpass=f={lowpass}')
-            complex_str += "[unf];[unf]" + ','.join(filtergraph)\
+            complex_str += "[unf];[unf]" + ','.join(filtergraph)
 
         complex_str += "[out]"
         command += ['-filter_complex', complex_str, '-map', '[out]']
