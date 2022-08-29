@@ -44,7 +44,7 @@ class TriggerMismatch(Exception):
     :param expected: The expected value defined by TRIGGER property
     :param trigger_val: The actual value of the trigger property (if present)
     """
-    def __init__(self, trigger_key, expected, trigger_val=None):
+    def __init__(self, trigger_key: str, expected: str, trigger_val: Optional[str]=None):
         self.trigger_key = trigger_key
         self.expected = expected
         self.trigger_val = trigger_val
@@ -54,6 +54,17 @@ class TriggerMismatch(Exception):
             return f"Trigger property {self.trigger_key} not present in feed-forward detection properties"
         return f"Expected {self.trigger_key} to be {self.expected}, got {self.trigger_val}"
 
+
+class NoInBoundsSpeechSegments(Exception):
+    def __init__(self, n_early: int, n_late: int):
+        self.n_early = n_early
+        self.n_late = n_late
+
+    def __str__(self):
+        return (
+            f"All segments out-of-bounds ({self.n_early} segments before "
+            f"job start time, {self.n_late} after job end time)"
+        )
 
 class JobConfig(object):
     """ Handles job parsing logic
@@ -117,12 +128,14 @@ class DynamicSpeechJobConfig(JobConfig):
 
     :ivar start_time: Start time of the audio (in milliseconds)
     :ivar stop_time: Stop time of the audio (in milliseconds)
+    :ivar fps: Frames per second for video
     :ivar speaker: The speaker information contained in the feed-forward track
         if feed-forward track exists, otherwise None
     """
     def __init__(self, job: MpfSpeechJob):
         self.start_time: int
-        self.stop_time: Optional[int]
+        self.stop_time: Optional[int] = None
+        self.fpms: Optional[float] = None
         super().__init__(job)
 
         # Properties related to dynamic speech pipelines
@@ -138,10 +151,17 @@ class DynamicSpeechJobConfig(JobConfig):
             if stop_frame < 0:
                 stop_frame = None
 
+            if 'FPS' not in job.media_properties:
+                raise mpf.DetectionException(
+                    'FPS must be included in video job media properties.',
+                    mpf.DetectionError.MISSING_PROPERTY
+                )
+
             # Convert frame locations to timestamps
             media_frame_count = int(job.media_properties.get('FRAME_COUNT', -1))
             media_duration = float(job.media_properties.get('DURATION', -1))
-            fpms = float(job.media_properties['FPS']) / 1000.0
+            self.fps = float(job.media_properties['FPS'])
+            fpms = self.fps / 1000.0
             self.start_time = int(start_frame / fpms)
 
             # The WFM will pass a job stop frame equal to FRAME_COUNT-1 for the
@@ -256,6 +276,8 @@ class DynamicSpeechJobConfig(JobConfig):
                 'start_1-stop_1, start_2-stop_2, ..., start_n-stop_n'
             where start_x and stop_x are in milliseconds, to a list of int pairs
         """
+        n_early = 0
+        n_late = 0
         try:
             segments = []
             start_stops = segments_string.split(",")
@@ -267,8 +289,10 @@ class DynamicSpeechJobConfig(JobConfig):
                 # Limit to media start and stop times. If entirely
                 #  outside the limits, drop the segment
                 if media_stop_time is not None and start > media_stop_time:
+                    n_late += 1
                     continue
                 if stop < media_start_time:
+                    n_early += 1
                     continue
                 start = max(start, media_start_time)
                 if media_stop_time is not None:
@@ -290,6 +314,6 @@ class DynamicSpeechJobConfig(JobConfig):
         # If all the voiced segments are outside the time range, signal that
         #  we should halt and return an empty list.
         if not segments:
-            return None
+            raise NoInBoundsSpeechSegments(n_early, n_late)
 
         return sorted(segments)

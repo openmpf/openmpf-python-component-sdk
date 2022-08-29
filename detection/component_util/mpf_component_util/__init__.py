@@ -40,5 +40,5 @@ from .utils import *
 from .http_retry import HttpRetry
 
 from .job_config import (
-    TriggerMismatch, JobConfig, DynamicSpeechJobConfig, SpeakerInfo
+    TriggerMismatch, NoInBoundsSpeechSegments, JobConfig, DynamicSpeechJobConfig, SpeakerInfo
 )
