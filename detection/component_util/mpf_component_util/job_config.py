@@ -128,14 +128,18 @@ class DynamicSpeechJobConfig(JobConfig):
 
     :ivar start_time: Start time of the audio (in milliseconds)
     :ivar stop_time: Stop time of the audio (in milliseconds)
-    :ivar fps: Frames per second for video
+    :ivar fps: Frames per second for video jobs
+    :ivar speaker_id_prefix: Prefix for LONG_SPEAKER_ID
+    :ivar overwrite_ids: Whether this is probably a subjob
     :ivar speaker: The speaker information contained in the feed-forward track
         if feed-forward track exists, otherwise None
     """
     def __init__(self, job: MpfSpeechJob):
         self.start_time: int
         self.stop_time: Optional[int] = None
-        self.fpms: Optional[float] = None
+        self.fps: Optional[float] = None
+        self.speaker_id_prefix: str
+        self.overwrite_ids: bool
         super().__init__(job)
 
         # Properties related to dynamic speech pipelines
@@ -145,23 +149,36 @@ class DynamicSpeechJobConfig(JobConfig):
 
     def _add_job_data(self, job: MpfSpeechJob):
         super()._add_job_data(job)
+        self.overwrite_ids = self.is_feed_forward_job
+
+        media_duration = float(job.media_properties.get('DURATION', -1))
         if isinstance(job, mpf.VideoJob):
             start_frame = job.start_frame
             stop_frame = job.stop_frame
             if stop_frame < 0:
                 stop_frame = None
+            self.speaker_id_prefix = f"{start_frame}-{stop_frame or 'EOF'}-"
 
             if 'FPS' not in job.media_properties:
                 raise mpf.DetectionException(
                     'FPS must be included in video job media properties.',
                     mpf.DetectionError.MISSING_PROPERTY
                 )
-
-            # Convert frame locations to timestamps
-            media_frame_count = int(job.media_properties.get('FRAME_COUNT', -1))
-            media_duration = float(job.media_properties.get('DURATION', -1))
             self.fps = float(job.media_properties['FPS'])
             fpms = self.fps / 1000.0
+            media_frame_count = int(job.media_properties.get('FRAME_COUNT', -1))
+
+            # Determine whether this may be a subjob, based on whether the
+            #  start and stop frames line up with the media length
+            if stop_frame is not None:
+                if start_frame > 0:
+                    self.overwrite_ids = True
+                if media_duration > 0 and (stop_frame / fpms) < media_duration:
+                    self.overwrite_ids = True
+                if media_frame_count > 0 and stop_frame < media_frame_count - 1:
+                    self.overwrite_ids = True
+
+            # Convert frame locations to timestamps
             self.start_time = int(start_frame / fpms)
 
             # The WFM will pass a job stop frame equal to FRAME_COUNT-1 for the
@@ -181,6 +198,15 @@ class DynamicSpeechJobConfig(JobConfig):
             self.stop_time = job.stop_time
             if self.stop_time < 0:
                 self.stop_time = None
+            self.speaker_id_prefix = f"{self.start_time}-{self.stop_time or 'EOF'}-"
+
+            # Determine whether this may be a subjob, based on whether the
+            #  start and stop frames line up with the media length
+            if self.stop_time is not None:
+                if self.start_time > 0:
+                    self.overwrite_ids = True
+                if media_duration > 0 and self.stop_time < media_duration:
+                    self.overwrite_ids = True
 
     def _add_feed_forward_properties(self, job: MpfSpeechJob):
         feed_forward_properties = job.feed_forward_track.detection_properties
