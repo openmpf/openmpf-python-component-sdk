@@ -68,10 +68,7 @@ def _get_transformer(job, input_frame_size, ff_frame_locations: Dict[int, mpf.Im
 
 
 def _add_transformers_if_needed(job_properties, media_properties, input_video_size, current_transformer):
-    if utils.get_property(job_properties, 'AUTO_ROTATE', False):
-        rotation = utils.get_property(media_properties, 'ROTATION', 0.0)
-    else:
-        rotation = utils.get_property(job_properties, 'ROTATION', 0.0)
+    _, rotation = _get_job_level_rotation(job_properties, media_properties)
     rotation = utils.normalize_angle(rotation)
 
     rotation_threshold = utils.get_property(job_properties, 'ROTATION_THRESHOLD', 0.1)
@@ -79,10 +76,7 @@ def _add_transformers_if_needed(job_properties, media_properties, input_video_si
     if not rotation_required:
         rotation = 0
 
-    if utils.get_property(job_properties, 'AUTO_FLIP', False):
-        flip_required = utils.get_property(media_properties, 'HORIZONTAL_FLIP', False)
-    else:
-        flip_required = utils.get_property(job_properties, 'HORIZONTAL_FLIP', False)
+    _, flip_required = _get_job_level_flip(job_properties, media_properties)
 
     search_region = _get_search_region(job_properties)
     if rotation_required or flip_required:
@@ -170,15 +164,23 @@ def _add_feed_forward_transforms_if_needed(job_properties, media_properties, tra
 
 
 def _get_job_level_rotation(job_properties, media_properties):
-    props = media_properties if utils.get_property(job_properties, 'AUTO_ROTATE', False) else job_properties
-    if 'ROTATION' in props:
-        return True, utils.normalize_angle(float(props['ROTATION']))
-    return False, 0
-
+    rotation_str = job_properties.get('ROTATION')
+    if not rotation_str and utils.get_property(job_properties, 'AUTO_ROTATE', True):
+        rotation_str = media_properties.get('ROTATION')
+    if rotation_str:
+        return True, utils.normalize_angle(float(rotation_str))
+    else:
+        return False, 0
 
 def _get_job_level_flip(job_properties, media_properties):
-    props = media_properties if utils.get_property(job_properties, 'AUTO_FLIP', False) else job_properties
-    return 'HORIZONTAL_FLIP' in props, utils.get_property(props, 'HORIZONTAL_FLIP', False)
+    job_flip = utils.get_property(job_properties, 'HORIZONTAL_FLIP', None, bool)
+    if job_flip is not None:
+        return True, job_flip
+    if utils.get_property(job_properties, 'AUTO_FLIP', True):
+        media_flip = utils.get_property(media_properties, 'HORIZONTAL_FLIP', None, bool)
+        if media_flip is not None:
+            return True, media_flip
+    return False, False
 
 
 def _get_superset_region_no_rotation(regions: Iterable[utils.RotatedRect]) -> utils.Rect:
