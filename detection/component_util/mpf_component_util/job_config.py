@@ -24,7 +24,6 @@
 # limitations under the License.                                            #
 #############################################################################
 
-import configparser
 from collections import defaultdict
 from pathlib import Path
 from typing import Union, Optional, Mapping, List, Tuple, NamedTuple, Any
@@ -66,7 +65,7 @@ class NoInBoundsSpeechSegments(Exception):
             f"job start time, {self.n_late} after job end time)"
         )
 
-class JobConfig(object):
+class TriggeredJobConfig(object):
     """ Handles job parsing logic
 
     :ivar job_name: Job name
@@ -122,7 +121,7 @@ class SpeakerInfo(NamedTuple):
     speech_segs: List[Any]
 
 
-class DynamicSpeechJobConfig(JobConfig):
+class DynamicSpeechJobConfig(TriggeredJobConfig):
     """ Handles job parsing logic for components that may be part of a dynamic
         speech pipeline
 
