@@ -496,6 +496,40 @@ class TestAffineTransformer(unittest.TestCase):
         img = mpf_util.ImageReader(job).get_image()
         self.assertTrue(np.array_equal(img[0, 0], (255, 255, 255)))
 
+    def test_auto_orientation_prefers_job_property(self):
+        img_path = test_util.get_data_file_path('test_img.png')
+        job = mpf.ImageJob('test', img_path,
+                           {'ROTATION': '90', 'HORIZONTAL_FLIP': 'TRUE'},
+                           {'ROTATION': '180', 'HORIZONTAL_FLIP': 'FALSE'})
+        img = mpf_util.ImageReader(job).get_image()
+        self.assertEqual((200, 320), mpf_util.Size.from_frame(img))
+        self.assertTrue(test_util.is_all_black(img[300:, 170:]))
+
+        job = mpf.ImageJob('test', img_path,
+                           {'ROTATION': '0', 'HORIZONTAL_FLIP': 'FALSE'},
+                           {'ROTATION': '90', 'HORIZONTAL_FLIP': 'TRUE'})
+        img = mpf_util.ImageReader(job).get_image()
+        self.assertEqual((320, 200), mpf_util.Size.from_frame(img))
+        self.assertTrue(test_util.is_all_black(img[170:, 300:]))
+
+
+    def test_auto_orientation_is_default(self):
+        img_path = test_util.get_data_file_path('test_img.png')
+        job = mpf.ImageJob('test', img_path, {}, {'ROTATION': '90', 'HORIZONTAL_FLIP': 'TRUE'})
+        img = mpf_util.ImageReader(job).get_image()
+        self.assertEqual((200, 320), mpf_util.Size.from_frame(img))
+        self.assertTrue(test_util.is_all_black(img[300:, 170:]))
+
+
+    def test_media_props_ignored_without_auto_orientation(self):
+        img_path = test_util.get_data_file_path('test_img.png')
+        job = mpf.ImageJob('test', img_path,
+                           {'AUTO_ROTATE': 'FALSE', 'AUTO_FLIP': 'FALSE'},
+                           {'ROTATION': '90', 'HORIZONTAL_FLIP': 'TRUE'})
+        img = mpf_util.ImageReader(job).get_image()
+        self.assertEqual((320, 200), mpf_util.Size.from_frame(img))
+        self.assertTrue(test_util.is_all_black(img[170:, 300:]))
+
 
 def closest_color(sample):
     palette = np.array((
