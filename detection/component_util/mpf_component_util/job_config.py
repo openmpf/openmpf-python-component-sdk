@@ -99,7 +99,12 @@ class TriggeredJobConfig(object):
             default_value='',
             prop_type=str
         )
-        t_key, t_val = trigger.strip().split('=') if trigger else (None, None)
+
+        # If there is no TRIGGER property, process as normal
+        if not trigger:
+            return
+
+        t_key, t_val = trigger.strip().split('=')
 
         # If trigger key is in feed-forward properties, only run
         #  transcription if the value matches trigger_val
