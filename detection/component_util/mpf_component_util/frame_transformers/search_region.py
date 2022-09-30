@@ -24,24 +24,30 @@
 # limitations under the License.                                            #
 #############################################################################
 
+from __future__ import annotations
+
+from typing import Callable
+
 from .. import utils
+
+ResolveEdgeFunc = Callable[[float, float], int]
 
 class RegionEdge(object):
     # Used when a value was not provided for an edge.
     @staticmethod
-    def default():
+    def default() -> ResolveEdgeFunc:
         return lambda default_size, _: int(round(default_size))
 
     # Used when the value for an edge is specified as pixel coordinate.
     @staticmethod
-    def absolute(value):
+    def absolute(value: int) -> ResolveEdgeFunc:
         if value < 0:
             return RegionEdge.default()
         return lambda _, max_size: int(round(min(value, max_size)))
 
     # Used when the value for an edge is specified as a percentage.
     @staticmethod
-    def percentage(percentage):
+    def percentage(percentage: float) -> ResolveEdgeFunc:
         if percentage < 0:
             return RegionEdge.default()
 
@@ -68,7 +74,7 @@ class SearchRegion(object):
         self.__bottom = bottom
 
 
-    def get_rect(self, frame_size):
+    def get_rect(self, frame_size) -> utils.Rect[int]:
         frame_size = utils.Size.as_size(frame_size)
         left_value = self.__left(0, frame_size.width)
         top_value = self.__top(0, frame_size.height)

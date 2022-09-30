@@ -24,6 +24,8 @@
 # limitations under the License.                                            #
 #############################################################################
 
+from __future__ import annotations
+
 import functools
 from typing import Sequence, Iterable, Tuple
 
@@ -144,7 +146,7 @@ class _AffineTransformation(object):
         # the correctly oriented image.
         # searchRegionRect will either be the same as mappedBoundingRect or be contained within mappedBoundingRect.
         search_region_rect = post_transform_search_region.get_rect(mapped_bounding_rect.size)
-        self.__region_size = search_region_rect.size
+        self.__region_size: utils.Size[int] = search_region_rect.size
         # When searchRegionRect is smaller than mappedBoundingRect, we need to move the searchRegionRect
         # to the origin. This slides the pixels outside of the search region off of the frame.
         move_search_region_to_origin = _IndividualXForms.translation(-search_region_rect.x, -search_region_rect.y)
@@ -183,7 +185,7 @@ class _AffineTransformation(object):
         # https://en.wikipedia.org/wiki/Affine_transformation#Image_transformation
         # "This transform relocates pixels requiring intensity interpolation to approximate the value of moved pixels,
         # bicubic interpolation is the standard for image transformations in image processing applications."
-        return cv2.warpAffine(frame, self.__reverse_transformation_matrix, self.__region_size,
+        return cv2.warpAffine(frame, self.__reverse_transformation_matrix, self.__region_size,  # type: ignore
                               flags=cv2.WARP_INVERSE_MAP | cv2.INTER_CUBIC,
                               borderMode=cv2.BORDER_CONSTANT, borderValue=self.__fill_color)
 
@@ -215,7 +217,7 @@ class _AffineTransformation(object):
 
     @staticmethod
     def __get_mapped_bounding_rect(regions: Sequence[utils.RotatedRect],
-                                   frame_rot_mat: np.ndarray) -> utils.Rect:
+                                   frame_rot_mat: np.ndarray) -> utils.Rect[float]:
         # Since we are working with 2d points and we aren't doing any translation here,
         # we can drop the last row and column to save some work.
         simple_rotation = frame_rot_mat[:2, :2]
@@ -228,7 +230,7 @@ class _AffineTransformation(object):
     @staticmethod
     def __get_all_corners(regions: Iterable[utils.RotatedRect]) -> np.ndarray:
         # Matrix containing each region's 4 corners. First row is x coordinate and second row is y coordinate.
-        return np.transpose(np.vstack([r.corners for r in regions]))
+        return np.transpose(np.vstack([r.corners for r in regions]))  # type: ignore
 
 
 

@@ -24,11 +24,14 @@
 # limitations under the License.                                            #
 #############################################################################
 
+from __future__ import annotations
+
 import dataclasses
 import operator
 import sys
 import typing
-from typing import Callable, Mapping, NamedTuple, Optional, Sequence, Tuple, Union, TypeVar
+from typing import (Callable, Mapping, NamedTuple, Optional, Sequence, Tuple, Union, TypeVar, 
+                    Generic, Any)
 
 import cv2
 import numpy as np
@@ -90,70 +93,73 @@ def rotation_angles_equal(a1: float, a2: float, epsilon=0.1) -> bool:
 
 
 IntOrFloat = Union[int, float]
+TNumber = TypeVar('TNumber', int, float)
 
 
-class Point(NamedTuple):
+class Point(NamedTuple, Generic[TNumber]):
     """
     The C++ OpenCV has a cv::Point class, but the Python version uses 2-tuples to represent points.
     Since NamedTuple is a subclass of tuple, this class can be used as a parameter in OpenCV functions
     that expect a point.
     """
-    x: IntOrFloat
-    y: IntOrFloat
+    x: TNumber
+    y: TNumber
 
 
-_PointLike = Union[Point, Tuple[IntOrFloat, IntOrFloat], Sequence[IntOrFloat]]
+_PointLike = Union[Point, Tuple[TNumber, TNumber], Sequence[TNumber]]
 
 
-class Size(NamedTuple):
+
+class Size(NamedTuple, Generic[TNumber]):
     """
     The C++ OpenCV has a cv::Size class, but the Python version uses 2-tuples to represent sizes.
     Since NamedTuple is a subclass of tuple, this class can be used as a parameter in OpenCV functions
     that expect a size.
     """
-    width: IntOrFloat
-    height: IntOrFloat
+    width: TNumber
+    height: TNumber
 
     @property
-    def area(self) -> IntOrFloat:
+    def area(self) -> TNumber:
         return self.width * self.height
 
     @staticmethod
-    def from_frame(frame: np.ndarray) -> 'Size':
+    def from_frame(frame: np.ndarray) -> Size[int]:
         height, width, _ = frame.shape
         return Size(width, height)
 
     @staticmethod
-    def as_size(obj: '_SizeLike') -> 'Size':
+    def as_size(obj: '_SizeLike[TNumber]') -> Size[TNumber]:
         return obj if isinstance(obj, Size) else Size(*obj)
 
 
-_SizeLike = Union[Size, Tuple[IntOrFloat, IntOrFloat], Sequence[IntOrFloat]]
+_SizeLike = Union['Size[TNumber]', Tuple[TNumber, TNumber], Sequence[TNumber]]
 
 
-def element_wise_op(op, obj1, obj2, target_type=None):
+
+def element_wise_op(op, obj1, obj2, target_type=None) -> Any:
     if target_type is None:
         target_type = type(obj1)
     return target_type(*(op(v1, v2) for v1, v2 in zip(obj1, obj2)))
 
 
-class Rect(NamedTuple):
+class Rect(NamedTuple, Generic[TNumber]):
     """
     The C++ OpenCV has a cv::Rect class, but the Python version uses 4-tuples to represent rectangles.
     Since NamedTuple is a subclass of tuple, this class can be used as a parameter in OpenCV functions
     that expect a rectangle.
     """
-    x: IntOrFloat
-    y: IntOrFloat
-    width: IntOrFloat
-    height: IntOrFloat
+    x: TNumber
+    y: TNumber
+    width: TNumber
+    height: TNumber
 
     @property
-    def br(self) -> Point:
+    def br(self) -> Point[TNumber]:
         return Point(self.x + self.width, self.y + self.height)
 
     @property
-    def tl(self) -> Point:
+    def tl(self) -> Point[TNumber]:
         return Point(self.x, self.y)
 
     @property
@@ -161,14 +167,14 @@ class Rect(NamedTuple):
         return self.area <= 0
 
     @property
-    def area(self) -> IntOrFloat:
+    def area(self) -> TNumber:
         return self.width * self.height
 
     @property
-    def size(self) -> Size:
+    def size(self) -> Size[TNumber]:
         return Size(self.width, self.height)
 
-    def union(self, other: '_RectLike') -> 'Rect':
+    def union(self, other: _RectLike[TNumber]) -> Rect[TNumber]:
         other = Rect.__rectify(other)
 
         if self.empty:
@@ -181,35 +187,39 @@ class Rect(NamedTuple):
                 element_wise_op(max, self.br, other.br))
 
 
-    def intersection(self, other: '_RectLike') -> 'Rect':
+    def intersection(self, other: _RectLike[TNumber]) -> Rect[TNumber]:
         other = Rect.__rectify(other)
 
         top_left = element_wise_op(max, self.tl, other.tl)
         bottom_right = element_wise_op(min, self.br, other.br)
 
         if top_left.x >= bottom_right.x or top_left.y >= bottom_right.y:
-            return Rect(0, 0, 0, 0)
+            if isinstance(self.x, int):
+                return Rect(0, 0, 0, 0)
+            else:
+                return Rect(0.0, 0.0, 0.0, 0.0)
         return Rect.from_corners(top_left, bottom_right)
 
 
     @staticmethod
-    def from_corners(point1: _PointLike, point2: _PointLike) -> 'Rect':
+    def from_corners(point1: _PointLike[TNumber], point2: _PointLike[TNumber]) -> Rect[TNumber]:
         top_left = element_wise_op(min, point1, point2, Point)
         bottom_right = element_wise_op(max, point1, point2, Point)
         dist = element_wise_op(operator.sub, bottom_right, top_left, Size)
         return Rect.from_corner_and_size(top_left, dist)
 
     @staticmethod
-    def from_corner_and_size(top_left_point: _PointLike, size: _SizeLike):
+    def from_corner_and_size(top_left_point: _PointLike[TNumber], size: _SizeLike[TNumber]
+                             ) -> Rect[TNumber]:
         return Rect(top_left_point[0], top_left_point[1], size[0], size[1])
 
     @staticmethod
-    def from_image_location(image_location: mpf.ImageLocation):
+    def from_image_location(image_location: mpf.ImageLocation) -> 'Rect[int]':
         return Rect(image_location.x_left_upper, image_location.y_left_upper, image_location.width,
                     image_location.height)
 
     @staticmethod
-    def __rectify(obj) -> 'Rect':
+    def __rectify(obj) -> Rect:
         if isinstance(obj, Rect):
             return obj
         if len(obj) == 4:
@@ -226,10 +236,10 @@ class Rect(NamedTuple):
 
 _RectLike = Union[
     Rect,
-    Tuple[IntOrFloat, IntOrFloat, IntOrFloat, IntOrFloat],
-    Sequence[IntOrFloat],
-    Tuple[_PointLike, Size],
-    Tuple[_PointLike, Point]
+    Tuple[TNumber, TNumber, TNumber, TNumber],
+    Sequence[TNumber],
+    Tuple[_PointLike[TNumber], Size],
+    Tuple[_PointLike[TNumber], Point]
 ]
 
 
@@ -272,7 +282,7 @@ class RotatedRect:
             (1, 1, 1)
         )
 
-        xformed_corners = np.matmul(xform_mat, corner_mat)
+        xformed_corners = np.matmul(xform_mat, corner_mat)  # type: ignore
         return (
             Point(self.x, self.y),
             Point(xformed_corners[0, 0], xformed_corners[1, 0]),
@@ -307,7 +317,7 @@ class RotatedRect:
         full_rotation_mat = np.vstack((rotation_mat2d, (0, 0, 1)))
 
         # Transform are applied from right to left, so rotation will occur before flipping.
-        return np.matmul(flip_mat, full_rotation_mat)
+        return np.matmul(flip_mat, full_rotation_mat)  # type: ignore
 
 
     @property
