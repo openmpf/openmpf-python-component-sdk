@@ -26,7 +26,7 @@
 
 from collections import defaultdict
 from pathlib import Path
-from typing import Union, Optional, Mapping, List, Tuple, NamedTuple, Any
+from typing import Union, Optional, Mapping, List, Dict, Tuple, NamedTuple, Any
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
@@ -70,25 +70,27 @@ class TriggeredJobConfig(object):
 
     :ivar job_name: Job name
     :ivar target_file: File location of input data
-    :ivar is_feed_forward_job: Whether job contains a feed-forward track
+    :ivar is_triggered_job: Whether job contains a feed-forward track
     """
     def __init__(self, job: MpfJob):
         # General job data
         self.job_name: str
         self.target_file: Path
-        self.is_feed_forward_job: bool
+        self.is_triggered_job: bool = False
         self._add_job_data(job)
 
-        if self.is_feed_forward_job:
+        if self.is_triggered_job:
             self._check_trigger(job)
 
         # Job properties
         self._add_job_properties(job.job_properties)
 
     def _add_job_data(self, job: MpfJob):
-        self.is_feed_forward_job = (job.feed_forward_track is not None)
         self.target_file = Path(job.data_uri)
         self.job_name = job.job_name
+        ff_track = job.feed_forward_track
+        if ff_track is not None:
+            self.is_triggered_job = 'TRIGGER' in ff_track.detection_properties
 
     @staticmethod
     def _check_trigger(job: Union[mpf.ImageJob, mpf.AudioJob, mpf.VideoJob, mpf.GenericJob]):
@@ -122,7 +124,7 @@ class SpeakerInfo(NamedTuple):
     gender: str
     gender_score: float
     language: str
-    language_scores: Mapping[str, float]
+    language_scores: Dict[str, float]
     speech_segs: List[Any]
 
 
@@ -148,12 +150,12 @@ class DynamicSpeechJobConfig(TriggeredJobConfig):
 
         # Properties related to dynamic speech pipelines
         self.speaker: Optional[SpeakerInfo] = None
-        if self.is_feed_forward_job:
+        if self.is_triggered_job:
             self._add_feed_forward_properties(job)
 
     def _add_job_data(self, job: MpfSpeechJob):
         super()._add_job_data(job)
-        self.overwrite_ids = self.is_feed_forward_job
+        self.overwrite_ids = self.is_triggered_job
 
         media_duration = float(job.media_properties.get('DURATION', -1))
         if isinstance(job, mpf.VideoJob):
