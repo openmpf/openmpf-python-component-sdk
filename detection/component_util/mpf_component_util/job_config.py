@@ -88,9 +88,8 @@ class TriggeredJobConfig(object):
     def _add_job_data(self, job: MpfJob):
         self.target_file = Path(job.data_uri)
         self.job_name = job.job_name
-        ff_track = job.feed_forward_track
-        if ff_track is not None:
-            self.is_triggered_job = 'TRIGGER' in ff_track.detection_properties
+        if job.feed_forward_track is not None:
+            self.is_triggered_job = 'TRIGGER' in job.job_properties
 
     @staticmethod
     def _check_trigger(job: Union[mpf.ImageJob, mpf.AudioJob, mpf.VideoJob, mpf.GenericJob]):
@@ -101,10 +100,6 @@ class TriggeredJobConfig(object):
             default_value='',
             prop_type=str
         )
-
-        # If there is no TRIGGER property, process as normal
-        if not trigger:
-            return
 
         t_key, t_val = trigger.strip().split('=')
 
