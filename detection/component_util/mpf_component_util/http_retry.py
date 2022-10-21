@@ -32,6 +32,12 @@ import urllib.request
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
+SHOULD_RETRY_FUNC = Callable[[str, urllib.error.URLError, Optional[str]],
+                             bool]
+
+def always_retry(url: str, exception: urllib.error.URLError, body: Optional[str]):
+    return True
+
 
 class HttpRetry:
     def __init__(self, max_attempts: int, starting_delay_ms: int, max_delay_ms: int,
@@ -51,7 +57,7 @@ class HttpRetry:
             printer)
 
 
-    def urlopen(self, *args, **kwargs):
+    def urlopen(self, *args, should_retry: SHOULD_RETRY_FUNC = always_retry, **kwargs):
         remaining_attempts = self._max_attempts
         delay = self._starting_delay_ms
         url = self._get_url(*args, **kwargs)
@@ -59,9 +65,10 @@ class HttpRetry:
             try:
                 return urllib.request.urlopen(*args, **kwargs)
             except urllib.error.URLError as e:
+                error_body = self._get_error_body(e)
+                message = self._get_failure_message(url, e, error_body)
                 remaining_attempts -= 1
-                message = self._get_failure_message(url, e)
-                if remaining_attempts == 0:
+                if not should_retry(url, e, error_body) or remaining_attempts <= 0:
                     raise mpf.DetectionError.NETWORK_ERROR.exception(message) from e
 
                 retry_after_header = self._get_retry_after_header_ms(e)
@@ -90,11 +97,17 @@ class HttpRetry:
             return request_obj
 
     @staticmethod
-    def _get_failure_message(url: str, exception: Exception) -> str:
+    def _get_error_body(exception: urllib.error.URLError) -> Optional[str]:
         if isinstance(exception, urllib.error.HTTPError):
-            response_content = exception.read().decode('utf-8', errors='replace')
+            return exception.read().decode('utf-8', errors='replace')
+        else:
+            return None
+
+    @staticmethod
+    def _get_failure_message(url: str, exception: Exception, error_body: Optional[str]) -> str:
+        if isinstance(exception, urllib.error.HTTPError):
             return f'HTTP request to "{url}" failed with status {exception.code} and message: ' \
-                   f'"{response_content}"'
+                   f'"{error_body}"'
         else:
             return f'HTTP request to {url} failed due to: "{exception}".'
 
