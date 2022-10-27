@@ -24,7 +24,7 @@
 # limitations under the License.                                            #
 #############################################################################
 
-from . import test_util
+import test_util
 test_util.add_local_component_libs_to_sys_path()
 
 import typing
