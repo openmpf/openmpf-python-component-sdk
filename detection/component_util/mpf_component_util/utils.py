@@ -30,7 +30,7 @@ import dataclasses
 import operator
 import sys
 import typing
-from typing import (Callable, Mapping, NamedTuple, Optional, Sequence, Tuple, Union, TypeVar, 
+from typing import (Callable, Mapping, NamedTuple, Optional, Sequence, Tuple, Union, TypeVar,
                     Generic, Any)
 
 import cv2
@@ -92,7 +92,6 @@ def rotation_angles_equal(a1: float, a2: float, epsilon=0.1) -> bool:
         return (a1_dist + a2_dist) < epsilon
 
 
-IntOrFloat = Union[int, float]
 TNumber = TypeVar('TNumber', int, float)
 
 
@@ -106,7 +105,7 @@ class Point(NamedTuple, Generic[TNumber]):
     y: TNumber
 
 
-_PointLike = Union[Point, Tuple[TNumber, TNumber], Sequence[TNumber]]
+_PointLike = Union['Point[TNumber]', Tuple[TNumber, TNumber], Sequence[TNumber]]
 
 
 
@@ -129,12 +128,11 @@ class Size(NamedTuple, Generic[TNumber]):
         return Size(width, height)
 
     @staticmethod
-    def as_size(obj: '_SizeLike[TNumber]') -> Size[TNumber]:
+    def as_size(obj: _SizeLike[TNumber]) -> Size[TNumber]:
         return obj if isinstance(obj, Size) else Size(*obj)
 
 
 _SizeLike = Union['Size[TNumber]', Tuple[TNumber, TNumber], Sequence[TNumber]]
-
 
 
 def element_wise_op(op, obj1, obj2, target_type=None) -> Any:
@@ -214,18 +212,18 @@ class Rect(NamedTuple, Generic[TNumber]):
         return Rect(top_left_point[0], top_left_point[1], size[0], size[1])
 
     @staticmethod
-    def from_image_location(image_location: mpf.ImageLocation) -> 'Rect[int]':
+    def from_image_location(image_location: mpf.ImageLocation) -> Rect[int]:
         return Rect(image_location.x_left_upper, image_location.y_left_upper, image_location.width,
                     image_location.height)
 
     @staticmethod
-    def __rectify(obj) -> Rect:
+    def __rectify(obj: _RectLike[TNumber]) -> Rect[TNumber]:
         if isinstance(obj, Rect):
             return obj
         if len(obj) == 4:
             return Rect(*obj)
         if len(obj) == 2:
-            obj1 = obj[0]
+            obj1 = typing.cast(_PointLike[TNumber], obj[0])
             obj2 = obj[1]
             if isinstance(obj2, Point):
                 return Rect.from_corners(obj1, obj2)
@@ -235,11 +233,11 @@ class Rect(NamedTuple, Generic[TNumber]):
 
 
 _RectLike = Union[
-    Rect,
+    'Rect[TNumber]',
     Tuple[TNumber, TNumber, TNumber, TNumber],
     Sequence[TNumber],
-    Tuple[_PointLike[TNumber], Size],
-    Tuple[_PointLike[TNumber], Point]
+    Tuple[_PointLike[TNumber], 'Size[TNumber]'],
+    Tuple[_PointLike[TNumber], 'Point[TNumber]']
 ]
 
 
@@ -262,7 +260,7 @@ class RotatedRect:
     flip: bool
 
     @property
-    def corners(self) -> Tuple[Point, Point, Point, Point]:
+    def corners(self) -> Tuple[Point[float], Point[float], Point[float], Point[float]]:
         has_rotation = not rotation_angles_equal(self.rotation, 0)
         if not has_rotation and not self.flip:
             return (
@@ -321,6 +319,6 @@ class RotatedRect:
 
 
     @property
-    def bounding_rect(self) -> Rect:
+    def bounding_rect(self) -> Rect[float]:
         corners = np.asarray(self.corners)
         return Rect.from_corners(np.min(corners, axis=0), np.max(corners, axis=0) + 1)
