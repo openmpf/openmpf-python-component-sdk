@@ -25,17 +25,16 @@
 #############################################################################
 
 import time
-from typing import Callable, Any, Optional, Mapping
+from typing import Callable, Any, Literal, Optional, Mapping
 import urllib.error
 import urllib.request
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
-SHOULD_RETRY_FUNC = Callable[[str, urllib.error.URLError, Optional[str]],
-                             bool]
+ShouldRetryFunc = Callable[[str, urllib.error.URLError, Optional[str]], bool]
 
-def always_retry(url: str, exception: urllib.error.URLError, body: Optional[str]):
+def always_retry(url: str, exception: urllib.error.URLError, body: Optional[str]) -> Literal[True]:
     return True
 
 
@@ -57,7 +56,7 @@ class HttpRetry:
             printer)
 
 
-    def urlopen(self, *args, should_retry: SHOULD_RETRY_FUNC = always_retry, **kwargs):
+    def urlopen(self, *args, should_retry: ShouldRetryFunc = always_retry, **kwargs):
         remaining_attempts = self._max_attempts
         delay = self._starting_delay_ms
         url = self._get_url(*args, **kwargs)
