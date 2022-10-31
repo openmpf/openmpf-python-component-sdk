@@ -29,18 +29,18 @@ from __future__ import division, print_function
 import os
 import itertools
 import sys
-from typing import Iterable
 
 import cv2
 import numpy as np
 
-import mpf_component_api as mpf
-import mpf_component_util as mpf_util
 
-
+local_paths_added = False
 def add_local_component_libs_to_sys_path():
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../'))
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../api'))
+    global local_paths_added
+    if not local_paths_added:
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../'))
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../api'))
+        local_paths_added = True
 
 
 def get_data_file_path(filename):
@@ -61,7 +61,8 @@ def is_all_white(image):
     return is_all_same_color(image, (255, 255, 255))
 
 
-def markup_image(original_image: np.ndarray, image_locations: Iterable[mpf.ImageLocation]) -> np.ndarray:
+def markup_image(original_image: np.ndarray, image_locations) -> np.ndarray:
+    import mpf_component_util as mpf_util
     image = original_image.copy()
 
     colors = get_colors()
