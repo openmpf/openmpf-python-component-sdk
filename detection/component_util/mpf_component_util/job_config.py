@@ -132,6 +132,9 @@ class DynamicSpeechJobConfig(TriggeredJobConfig):
     :ivar fps: Frames per second for video jobs
     :ivar speaker_id_prefix: Prefix for LONG_SPEAKER_ID
     :ivar overwrite_ids: Whether this is probably a subjob
+    :ivar override_default_language: A default ISO 639-3 language to use when
+        languages defined in the speaker are not supported. If the feed-forward
+        track does not exist, this is None
     :ivar speaker: The speaker information contained in the feed-forward track
         if feed-forward track exists, otherwise None
     """
@@ -145,6 +148,7 @@ class DynamicSpeechJobConfig(TriggeredJobConfig):
 
         # Properties related to dynamic speech pipelines
         self.speaker: Optional[SpeakerInfo] = None
+        self.override_default_language: Optional[str] = None
         if self.is_triggered_job:
             self._add_feed_forward_properties(job)
 
@@ -280,6 +284,14 @@ class DynamicSpeechJobConfig(TriggeredJobConfig):
             prop_type=str
         )
         language = language.strip().lower()
+
+        self.override_default_language = mpf_util.get_property(
+            properties=feed_forward_properties,
+            key='DEFAULT_LANGUAGE',
+            default_value='',
+            prop_type=str
+        )
+        self.override_default_language = self.override_default_language.strip().lower()
 
         self.speaker = SpeakerInfo(
             speaker_id=speaker_id,
