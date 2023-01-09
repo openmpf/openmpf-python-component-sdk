@@ -62,7 +62,7 @@ class NoInBoundsSpeechSegments(Exception):
     def __str__(self):
         return (
             f"All segments out-of-bounds ({self.n_early} segments before "
-            f"job start time, {self.n_late} after job end time)"
+            f"job start time, {self.n_late} after job end time)."
         )
 
 class TriggeredJobConfig(object):
@@ -92,7 +92,7 @@ class TriggeredJobConfig(object):
             self.is_triggered_job = 'TRIGGER' in job.job_properties
 
     @staticmethod
-    def _check_trigger(job: Union[mpf.ImageJob, mpf.AudioJob, mpf.VideoJob, mpf.GenericJob]):
+    def _check_trigger(job: MpfJob):
         # Check TRIGGER is met
         trigger = mpf_util.get_property(
             properties=job.job_properties,
@@ -104,7 +104,7 @@ class TriggeredJobConfig(object):
         t_key, t_val = trigger.strip().split('=')
 
         # If trigger key is in feed-forward properties, only run
-        #  transcription if the value matches trigger_val
+        #  transcription if the value matches trigger val
         if t_key not in job.feed_forward_track.detection_properties:
             raise TriggerMismatch(t_key, t_val)
         if job.feed_forward_track.detection_properties[t_key] != t_val:
@@ -131,7 +131,7 @@ class DynamicSpeechJobConfig(TriggeredJobConfig):
     :ivar stop_time: Stop time of the audio (in milliseconds)
     :ivar fps: Frames per second for video jobs
     :ivar speaker_id_prefix: Prefix for LONG_SPEAKER_ID
-    :ivar overwrite_ids: Whether this is probably a subjob
+    :ivar overwrite_ids: Whether this has been identified as a likely subjob
     :ivar override_default_language: A default ISO 639-3 language to use when
         languages defined in the speaker are not supported. If the feed-forward
         track does not exist, this is None
@@ -176,11 +176,9 @@ class DynamicSpeechJobConfig(TriggeredJobConfig):
             # Determine whether this may be a subjob, based on whether the
             #  start and stop frames line up with the media length
             if stop_frame is not None:
-                if start_frame > 0:
-                    self.overwrite_ids = True
-                if media_duration > 0 and (stop_frame / fpms) < media_duration:
-                    self.overwrite_ids = True
-                if media_frame_count > 0 and stop_frame < media_frame_count - 1:
+                if (start_frame > 0
+                        or (media_duration > 0 and (stop_frame / fpms) < media_duration)
+                        or (media_frame_count > 0 and stop_frame < media_frame_count - 1)):
                     self.overwrite_ids = True
 
             # Convert frame locations to timestamps
@@ -208,9 +206,7 @@ class DynamicSpeechJobConfig(TriggeredJobConfig):
             # Determine whether this may be a subjob, based on whether the
             #  start and stop frames line up with the media length
             if self.stop_time is not None:
-                if self.start_time > 0:
-                    self.overwrite_ids = True
-                if media_duration > 0 and self.stop_time < media_duration:
+                if self.start_time > 0 or (media_duration > 0 and self.stop_time < media_duration):
                     self.overwrite_ids = True
 
     def _add_feed_forward_properties(self, job: MpfSpeechJob):
