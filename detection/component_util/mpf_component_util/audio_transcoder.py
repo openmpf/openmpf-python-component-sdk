@@ -26,7 +26,7 @@
 
 import os
 import subprocess
-from typing import Optional
+from typing import Optional, List, Tuple
 
 import pydub.audio_segment
 
@@ -35,28 +35,40 @@ import mpf_component_api as mpf
 
 _ERROR_MESSAGE_MAX_LENGTH = 5000
 
+
 def transcode_to_wav(
         filepath: str,
-        start_time: float = 0,
-        stop_time: Optional[float] = None,
-        highpass: int = 200,
-        lowpass: int = 3000) -> bytes:
+        *,
+        highpass: Optional[int] = 200,
+        lowpass: Optional[int] = 3000,
+        start_time: Optional[int] = None,
+        stop_time: Optional[int] = None,
+        segments: Optional[List[Tuple[float, float]]] = None) -> bytes:
     """
     Transcodes the audio contained in filepath (can be an audio or video file)
     from start_time to stop_time to WAVE format using ffmpeg, and returns it as
     a bytes object
 
     :param filepath: The path to the file (job.data_uri).
-    :param start_time: The time (in milliseconds) associated with the beginning
-        of audio segment. Default 0.
-    :param stop_time: The time (in milliseconds) associated with the end of the
-        audio segment. To go to the end of the file, pass None. Default None.
     :param highpass: Apply a double-pole high-pass filter with 3dB point
         frequency. The filter roll off at 6dB per pole per octave (20dB per
         pole per decade). Pass None to disable.
     :param lowpass: Apply a double-pole low-pass filter with 3dB point
         frequency. The filter roll off at 6dB per pole per octave (20dB per
         pole per decade). Pass None to disable.
+    :param start_time: The time (in milliseconds) associated with the beginning
+        of audio segment. Default None.
+    :param stop_time: The time (in milliseconds) associated with the end of the
+        audio segment. To go to the end of the file, pass None. Default None.
+    :param segments: A list of segments to trim and concatenate from the audio
+        in advance of transcoding. Each segment is represented by a tuple pair
+        of start and stop time (in milliseconds). If either the start or stop
+        time in a pair is None, the segment will extend to the start or end of
+        the audio, respectively.
+        If start_time and/or stop_time are supplied, the segments should be
+        relative to those times; i.e. the start_time will be added to each
+        segment time, and only segments within the start_time-stop_time span
+        will be included in the output.
     """
 
     if not os.path.exists(filepath):
@@ -72,22 +84,68 @@ def transcode_to_wav(
     #  through ffmpeg. Therefore, we perform the transcoding with ffmpeg
     #  directly, and only use pydub to fix headers in the output bytes.
     command = ['ffmpeg', '-i', filepath]
-    if start_time and start_time > 0:
-        command += ['-ss', str(start_time / 1000.0)]  # Audio clip start time
-    if stop_time and stop_time > 0:
-        command += ['-to', str(stop_time / 1000.0)]  # Audio clip end time
+    if segments is None:
+        if start_time is not None and start_time > 0:
+            command += ['-ss', str(start_time / 1000.0)]  # Audio clip start time
+        if stop_time is not None and stop_time > 0:
+            command += ['-to', str(stop_time / 1000.0)]  # Audio clip end time
+    else:
+        # Construct complex filter to trim and concatenate audio
+        trim_str_components = []
+        concat_str_components = []
+        for i, (t0, t1) in enumerate(segments):
+            # Offset by start_time so that segments are relative to the full
+            #  audio file (not the trimmed waveform)
+            if start_time is not None:
+                t0 = t0 + start_time if t0 is not None else start_time
+                t1 = t1 + start_time if t1 is not None else t1
+
+            if stop_time is not None:
+                # If stop_time is before the segment, skip it
+                if t0 is not None and t0 >= stop_time:
+                    continue
+
+                # Limit to stop_time
+                if t1 is None or t1 > stop_time:
+                    t1 = stop_time
+
+            # If either start or stop is not included, segment extends to limit
+            tr = []
+            if t0 is not None:
+                tr.append(f"start={t0 / 1000.0:f}")
+            if t1 is not None:
+                tr.append(f"end={t1 / 1000.0:f}")
+            tr = ':'.join(tr)
+            trim_str_components.append(f"[0:a]atrim={tr},asetpts=PTS-STARTPTS[a{i}];")
+            concat_str_components.append(f"[a{i}]")
+        trim_str = ''.join(trim_str_components)
+        concat_str = ''.join(concat_str_components) + f"concat=n={len(segments)}:v=0:a=1"
+        complex_str = trim_str + concat_str
+
+        # Apply filtergraph unless highpass or lowpass both None
+        if not (highpass is None and lowpass is None):
+            filtergraph = []
+            if highpass is not None:
+                filtergraph.append(f'highpass=f={highpass}')
+            if lowpass is not None:
+                filtergraph.append(f'lowpass=f={lowpass}')
+            complex_str += "[unf];[unf]" + ','.join(filtergraph)
+
+        complex_str += "[out]"
+        command += ['-filter_complex', complex_str, '-map', '[out]']
+
     command += [
         '-ac', '1',  # Channels
         '-ar', '8000',  # Sampling rate
         '-acodec', 'pcm_s16le',  # Audio codec
     ]
 
-    # Apply filtergraph unless highpass or lowpass both None
-    if highpass or lowpass:
+    # Apply filtergraph (can't use -af and -filter_complex together)
+    if segments is None and not (highpass is None and lowpass is None):
         filtergraph = []
-        if highpass:
+        if highpass is not None:
             filtergraph.append(f'highpass=f={highpass}')
-        if lowpass:
+        if lowpass is not None:
             filtergraph.append(f'lowpass=f={lowpass}')
         command += ['-af', ','.join(filtergraph)]
 

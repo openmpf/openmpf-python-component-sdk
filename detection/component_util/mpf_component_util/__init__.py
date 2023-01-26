@@ -30,9 +30,15 @@ from .video_capture import VideoCapture, VideoCaptureMixin
 
 from .audio_transcoder import transcode_to_wav
 
-from .models_ini_parser import (ModelsIniParser, ModelNotFoundError, ModelsIniError, ModelFileNotFoundError,
-                                ModelEmptyPathError, ModelMissingRequiredFieldError, ModelTypeConversionError)
+from .models_ini_parser import (
+    ModelsIniParser, ModelNotFoundError, ModelsIniError, ModelFileNotFoundError,
+    ModelEmptyPathError, ModelMissingRequiredFieldError, ModelTypeConversionError
+)
 
 from .utils import *
 
 from .http_retry import HttpRetry
+
+from .job_config import (
+    TriggerMismatch, NoInBoundsSpeechSegments, TriggeredJobConfig, DynamicSpeechJobConfig, SpeakerInfo
+)

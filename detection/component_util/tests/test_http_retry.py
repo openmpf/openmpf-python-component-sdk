@@ -27,6 +27,7 @@
 import test_util
 test_util.add_local_component_libs_to_sys_path()
 
+import io
 import unittest
 from unittest import mock
 from unittest.mock import Mock
@@ -185,6 +186,46 @@ class TestHttpRetry(unittest.TestCase):
         self.assertAlmostEqual(5, self._mock_sleep.call_args_list[6].args[0])
         self.assertAlmostEqual(5, self._mock_sleep.call_args_list[7].args[0])
         self.assertAlmostEqual(5, self._mock_sleep.call_args_list[8].args[0])
+
+
+    def test_prevent_retry(self):
+        num_checks = 0
+
+        def should_retry(url, error, body):
+            nonlocal num_checks
+            num_checks += 1
+            return num_checks != 2
+
+        self._mock_urlopen.side_effect = HTTPError(
+            'http://example.com', 400, 'BAD REQUEST', {}, io.BytesIO(b'specific error'))
+
+        retry = HttpRetry(4, 200, 30_000, self._mock_print)
+        with self.assertRaises(mpf.DetectionException) as cm:
+            retry.urlopen('http://example.com', should_retry=should_retry)
+
+        self.assertEqual(mpf.DetectionError.NETWORK_ERROR, cm.exception.error_code)
+        self.assertEqual(2, self._mock_urlopen.call_count)
+        self.assertEqual(2, num_checks)
+
+
+    def test_prevent_retry_custom_exception(self):
+
+        class SpecificError(Exception):
+            pass
+
+        def should_retry(url, error, body):
+            if body == 'specific error':
+                raise SpecificError()
+            else:
+                return True
+
+        self._mock_urlopen.side_effect = HTTPError(
+            'http://example.com', 400, 'BAD REQUEST', {}, io.BytesIO(b'specific error'))
+
+        retry = HttpRetry(3, 200, 30_000, self._mock_print)
+        with self.assertRaises(SpecificError):
+            retry.urlopen('http://example.com', should_retry=should_retry)
+        self._mock_urlopen.assert_called_once()
 
 
 
