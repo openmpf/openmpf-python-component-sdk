@@ -65,53 +65,6 @@ class NoInBoundsSpeechSegments(Exception):
             f"job start time, {self.n_late} after job end time)."
         )
 
-class TriggeredJobConfig(object):
-    """ Handles job parsing logic
-
-    :ivar job_name: Job name
-    :ivar target_file: File location of input data
-    :ivar is_triggered_job: Whether job contains a feed-forward track
-    """
-    def __init__(self, job: MpfJob):
-        # General job data
-        self.job_name: str
-        self.target_file: Path
-        self.is_triggered_job: bool = False
-        self._add_job_data(job)
-
-        if self.is_triggered_job:
-            self._check_trigger(job)
-
-        # Job properties
-        self._add_job_properties(job.job_properties)
-
-    def _add_job_data(self, job: MpfJob):
-        self.target_file = Path(job.data_uri)
-        self.job_name = job.job_name
-        if job.feed_forward_track is not None:
-            self.is_triggered_job = 'TRIGGER' in job.job_properties
-
-    @staticmethod
-    def _check_trigger(job: MpfJob):
-        # Check TRIGGER is met
-        trigger = mpf_util.get_property(
-            properties=job.job_properties,
-            key='TRIGGER',
-            default_value='',
-            prop_type=str
-        )
-
-        t_key, t_val = trigger.strip().split('=')
-
-        # If trigger key is in feed-forward properties, only run
-        #  transcription if the value matches trigger val
-        if t_key not in job.feed_forward_track.detection_properties:
-            raise TriggerMismatch(t_key, t_val)
-        if job.feed_forward_track.detection_properties[t_key] != t_val:
-            raise TriggerMismatch(t_key, t_val, job.feed_forward_track.detection_properties[t_key])
-
-    def _add_job_properties(self, job_properties: Mapping[str, str]):
-        raise NotImplementedError()
 
 
 class SpeakerInfo(NamedTuple):
@@ -123,10 +76,13 @@ class SpeakerInfo(NamedTuple):
     speech_segs: List[Any]
 
 
-class DynamicSpeechJobConfig(TriggeredJobConfig):
+class DynamicSpeechJobConfig:
     """ Handles job parsing logic for components that may be part of a dynamic
         speech pipeline
 
+    :ivar job_name: Job name
+    :ivar target_file: File location of input data
+    :ivar is_triggered_job: Whether job contains a feed-forward track
     :ivar start_time: Start time of the audio (in milliseconds)
     :ivar stop_time: Stop time of the audio (in milliseconds)
     :ivar fps: Frames per second for video jobs
@@ -139,12 +95,18 @@ class DynamicSpeechJobConfig(TriggeredJobConfig):
         if feed-forward track exists, otherwise None
     """
     def __init__(self, job: MpfSpeechJob):
+        self.job_name = job.job_name
+        self.target_file = Path(job.data_uri)
+        self.is_triggered_job = (job.feed_forward_track is not None
+                                 and bool(job.job_properties.get('TRIGGER')))
         self.start_time: int
         self.stop_time: Optional[int] = None
         self.fps: Optional[float] = None
         self.speaker_id_prefix: str
         self.overwrite_ids: bool
-        super().__init__(job)
+
+        self._add_media_info(job)
+        self._add_job_properties(job.job_properties)
 
         # Properties related to dynamic speech pipelines
         self.speaker: Optional[SpeakerInfo] = None
@@ -152,8 +114,12 @@ class DynamicSpeechJobConfig(TriggeredJobConfig):
         if self.is_triggered_job:
             self._add_feed_forward_properties(job)
 
-    def _add_job_data(self, job: MpfSpeechJob):
-        super()._add_job_data(job)
+
+    def _add_job_properties(self, job_properties: Mapping[str, str]):
+        raise NotImplementedError()
+
+
+    def _add_media_info(self, job: MpfSpeechJob):
         self.overwrite_ids = self.is_triggered_job
 
         media_duration = float(job.media_properties.get('DURATION', -1))
@@ -298,15 +264,13 @@ class DynamicSpeechJobConfig(TriggeredJobConfig):
             speech_segs=speech_segs
         )
 
-    def _add_job_properties(self, job_properties: Mapping[str, str]):
-        raise NotImplementedError()
 
     @staticmethod
     def _parse_segments_str(
                 segments_string: str,
-                media_start_time: Optional[int] = 0,
+                media_start_time: int = 0,
                 media_stop_time: Optional[int] = None
-            ) -> Optional[List[Tuple[int, int]]]:
+            ) -> List[Tuple[int, int]]:
         """ Converts a string of the form
                 'start_1-stop_1, start_2-stop_2, ..., start_n-stop_n'
             where start_x and stop_x are in milliseconds, to a list of int pairs
