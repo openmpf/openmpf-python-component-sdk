@@ -196,8 +196,8 @@ class DynamicSpeechJobConfig(TriggeredJobConfig):
         feed_forward_properties = job.feed_forward_track.detection_properties
         speaker_id = mpf_util.get_property(
             properties=feed_forward_properties,
-            key='SPEAKER_ID',
-            default_value='0',
+            key='LONG_SPEAKER_ID',
+            default_value='0-EOF-1',
             prop_type=str
         )
 
