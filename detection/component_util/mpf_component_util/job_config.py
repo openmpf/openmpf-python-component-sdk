@@ -5,11 +5,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2022 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2023 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2022 The MITRE Corporation                                      #
+# Copyright 2023 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -87,7 +87,6 @@ class DynamicSpeechJobConfig:
     :ivar stop_time: Stop time of the audio (in milliseconds)
     :ivar fps: Frames per second for video jobs
     :ivar speaker_id_prefix: Prefix for LONG_SPEAKER_ID
-    :ivar overwrite_ids: Whether this has been identified as a likely subjob
     :ivar override_default_language: A default ISO 639-3 language to use when
         languages defined in the speaker are not supported. If the feed-forward
         track does not exist, this is None
@@ -139,14 +138,6 @@ class DynamicSpeechJobConfig:
             fpms = self.fps / 1000.0
             media_frame_count = int(job.media_properties.get('FRAME_COUNT', -1))
 
-            # Determine whether this may be a subjob, based on whether the
-            #  start and stop frames line up with the media length
-            if stop_frame is not None:
-                if (start_frame > 0
-                        or (media_duration > 0 and (stop_frame / fpms) < media_duration)
-                        or (media_frame_count > 0 and stop_frame < media_frame_count - 1)):
-                    self.overwrite_ids = True
-
             # Convert frame locations to timestamps
             self.start_time = int(start_frame / fpms)
 
@@ -169,28 +160,14 @@ class DynamicSpeechJobConfig:
                 self.stop_time = None
             self.speaker_id_prefix = f"{self.start_time}-{self.stop_time or 'EOF'}-"
 
-            # Determine whether this may be a subjob, based on whether the
-            #  start and stop frames line up with the media length
-            if self.stop_time is not None:
-                if self.start_time > 0 or (media_duration > 0 and self.stop_time < media_duration):
-                    self.overwrite_ids = True
-
     def _add_feed_forward_properties(self, job: MpfSpeechJob):
         feed_forward_properties = job.feed_forward_track.detection_properties
         speaker_id = mpf_util.get_property(
             properties=feed_forward_properties,
-            key='SPEAKER_ID',
-            default_value='0',
+            key='LONG_SPEAKER_ID',
+            default_value='0-EOF-1',
             prop_type=str
         )
-        # If speaker ID was overwritten, use long speaker ID
-        if speaker_id == '0':
-            speaker_id = mpf_util.get_property(
-                properties=feed_forward_properties,
-                key='LONG_SPEAKER_ID',
-                default_value='0',
-                prop_type=str
-            )
 
         gender = mpf_util.get_property(
             properties=feed_forward_properties,
