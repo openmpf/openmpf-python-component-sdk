@@ -36,24 +36,6 @@ MpfJob = Union[mpf.AudioJob, mpf.VideoJob, mpf.ImageJob, mpf.GenericJob]
 MpfSpeechJob = Union[mpf.AudioJob, mpf.VideoJob]
 
 
-class TriggerMismatch(Exception):
-    """ Exception raised when the feed-forward track does not meet the trigger.
-
-    :param trigger_key: The trigger key defined by TRIGGER property
-    :param expected: The expected value defined by TRIGGER property
-    :param trigger_val: The actual value of the trigger property (if present)
-    """
-    def __init__(self, trigger_key: str, expected: str, trigger_val: Optional[str]=None):
-        self.trigger_key = trigger_key
-        self.expected = expected
-        self.trigger_val = trigger_val
-
-    def __str__(self):
-        if self.trigger_val is None:
-            return f"Trigger property {self.trigger_key} not present in feed-forward detection properties"
-        return f"Expected {self.trigger_key} to be {self.expected}, got {self.trigger_val}"
-
-
 class NoInBoundsSpeechSegments(Exception):
     def __init__(self, n_early: int, n_late: int):
         self.n_early = n_early
@@ -65,54 +47,6 @@ class NoInBoundsSpeechSegments(Exception):
             f"job start time, {self.n_late} after job end time)."
         )
 
-class TriggeredJobConfig(object):
-    """ Handles job parsing logic
-
-    :ivar job_name: Job name
-    :ivar target_file: File location of input data
-    :ivar is_triggered_job: Whether job contains a feed-forward track
-    """
-    def __init__(self, job: MpfJob):
-        # General job data
-        self.job_name: str
-        self.target_file: Path
-        self.is_triggered_job: bool = False
-        self._add_job_data(job)
-
-        if self.is_triggered_job:
-            self._check_trigger(job)
-
-        # Job properties
-        self._add_job_properties(job.job_properties)
-
-    def _add_job_data(self, job: MpfJob):
-        self.target_file = Path(job.data_uri)
-        self.job_name = job.job_name
-        if job.feed_forward_track is not None:
-            self.is_triggered_job = 'TRIGGER' in job.job_properties
-
-    @staticmethod
-    def _check_trigger(job: MpfJob):
-        # Check TRIGGER is met
-        trigger = mpf_util.get_property(
-            properties=job.job_properties,
-            key='TRIGGER',
-            default_value='',
-            prop_type=str
-        )
-
-        t_key, t_val = trigger.strip().split('=')
-
-        # If trigger key is in feed-forward properties, only run
-        #  transcription if the value matches trigger val
-        if t_key not in job.feed_forward_track.detection_properties:
-            raise TriggerMismatch(t_key, t_val)
-        if job.feed_forward_track.detection_properties[t_key] != t_val:
-            raise TriggerMismatch(t_key, t_val, job.feed_forward_track.detection_properties[t_key])
-
-    def _add_job_properties(self, job_properties: Mapping[str, str]):
-        raise NotImplementedError()
-
 
 class SpeakerInfo(NamedTuple):
     speaker_id: str
@@ -123,10 +57,15 @@ class SpeakerInfo(NamedTuple):
     speech_segs: List[Any]
 
 
-class DynamicSpeechJobConfig(TriggeredJobConfig):
+class DynamicSpeechJobConfig():
     """ Handles job parsing logic for components that may be part of a dynamic
         speech pipeline
 
+    :ivar job_name: Job name
+    :ivar target_file: File location of input data
+    :ivar is_downstream_job: Whether job contains a feed-forward track and
+        VOICED_SEGMENTS. Indicates that an upstream task performed speaker and
+        language detection.
     :ivar start_time: Start time of the audio (in milliseconds)
     :ivar stop_time: Stop time of the audio (in milliseconds)
     :ivar fps: Frames per second for video jobs
@@ -138,20 +77,29 @@ class DynamicSpeechJobConfig(TriggeredJobConfig):
         if feed-forward track exists, otherwise None
     """
     def __init__(self, job: MpfSpeechJob):
+        self.job_name: str
+        self.target_file: Path
+        self.is_downstream_job: bool = False
         self.start_time: int
         self.stop_time: Optional[int] = None
         self.fps: Optional[float] = None
         self.speaker_id_prefix: str
-        super().__init__(job)
+
+        self._add_job_data(job)
+        self._add_job_properties(job.job_properties)  # sub-class hook
 
         # Properties related to dynamic speech pipelines
         self.speaker: Optional[SpeakerInfo] = None
         self.override_default_language: Optional[str] = None
-        if self.is_triggered_job:
+        if self.is_downstream_job:
             self._add_feed_forward_properties(job)
 
     def _add_job_data(self, job: MpfSpeechJob):
-        super()._add_job_data(job)
+        self.job_name = job.job_name
+        self.target_file = Path(job.data_uri)
+        if job.feed_forward_track is not None:
+            self.is_downstream_job = \
+                'VOICED_SEGMENTS' in job.feed_forward_track.detection_properties
 
         media_duration = float(job.media_properties.get('DURATION', -1))
         if isinstance(job, mpf.VideoJob):
@@ -191,6 +139,9 @@ class DynamicSpeechJobConfig(TriggeredJobConfig):
             if self.stop_time < 0:
                 self.stop_time = None
             self.speaker_id_prefix = f"{self.start_time}-{self.stop_time or 'EOF'}-"
+
+    def _add_job_properties(self, job_properties: Mapping[str, str]):
+        raise NotImplementedError()
 
     def _add_feed_forward_properties(self, job: MpfSpeechJob):
         feed_forward_properties = job.feed_forward_track.detection_properties
@@ -272,9 +223,6 @@ class DynamicSpeechJobConfig(TriggeredJobConfig):
             gender_score=gender_score,
             speech_segs=speech_segs
         )
-
-    def _add_job_properties(self, job_properties: Mapping[str, str]):
-        raise NotImplementedError()
 
     @staticmethod
     def _parse_segments_str(
