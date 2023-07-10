@@ -65,7 +65,7 @@ class DynamicSpeechJobConfig:
     :ivar start_time: Start time of the audio (in milliseconds)
     :ivar stop_time: Stop time of the audio (in milliseconds)
     :ivar fps: Frames per second for video jobs
-    :ivar speaker_id_prefix: Prefix for LONG_SPEAKER_ID
+    :ivar speaker_id_prefix: Prefix for SPEAKER_ID
     :ivar override_default_language: A default ISO 639-3 language to use when
         languages defined in the speaker are not supported. If the feed-forward
         track does not exist, this is None
@@ -135,11 +135,12 @@ class DynamicSpeechJobConfig:
                 self.stop_time = None
             self.speaker_id_prefix = f"{self.start_time}-{self.stop_time or 'EOF'}-"
 
+
     def _add_feed_forward_properties(self, job: MpfSpeechJob):
         feed_forward_properties = job.feed_forward_track.detection_properties
         speaker_id = mpf_util.get_property(
             properties=feed_forward_properties,
-            key='LONG_SPEAKER_ID',
+            key='SPEAKER_ID',
             default_value='0-EOF-1',
             prop_type=str
         )
