@@ -32,26 +32,7 @@ import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
 
-MpfJob = Union[mpf.AudioJob, mpf.VideoJob, mpf.ImageJob, mpf.GenericJob]
 MpfSpeechJob = Union[mpf.AudioJob, mpf.VideoJob]
-
-
-class TriggerMismatch(Exception):
-    """ Exception raised when the feed-forward track does not meet the trigger.
-
-    :param trigger_key: The trigger key defined by TRIGGER property
-    :param expected: The expected value defined by TRIGGER property
-    :param trigger_val: The actual value of the trigger property (if present)
-    """
-    def __init__(self, trigger_key: str, expected: str, trigger_val: Optional[str]=None):
-        self.trigger_key = trigger_key
-        self.expected = expected
-        self.trigger_val = trigger_val
-
-    def __str__(self):
-        if self.trigger_val is None:
-            return f"Trigger property {self.trigger_key} not present in feed-forward detection properties"
-        return f"Expected {self.trigger_key} to be {self.expected}, got {self.trigger_val}"
 
 
 class NoInBoundsSpeechSegments(Exception):
@@ -64,7 +45,6 @@ class NoInBoundsSpeechSegments(Exception):
             f"All segments out-of-bounds ({self.n_early} segments before "
             f"job start time, {self.n_late} after job end time)."
         )
-
 
 
 class SpeakerInfo(NamedTuple):
@@ -82,7 +62,6 @@ class DynamicSpeechJobConfig:
 
     :ivar job_name: Job name
     :ivar target_file: File location of input data
-    :ivar is_triggered_job: Whether job contains a feed-forward track
     :ivar start_time: Start time of the audio (in milliseconds)
     :ivar stop_time: Stop time of the audio (in milliseconds)
     :ivar fps: Frames per second for video jobs
@@ -96,13 +75,10 @@ class DynamicSpeechJobConfig:
     def __init__(self, job: MpfSpeechJob):
         self.job_name = job.job_name
         self.target_file = Path(job.data_uri)
-        self.is_triggered_job = (job.feed_forward_track is not None
-                                 and bool(job.job_properties.get('TRIGGER')))
         self.start_time: int
         self.stop_time: Optional[int] = None
         self.fps: Optional[float] = None
         self.speaker_id_prefix: str
-        self.overwrite_ids: bool
 
         self._add_media_info(job)
         self._add_job_properties(job.job_properties)
@@ -110,7 +86,8 @@ class DynamicSpeechJobConfig:
         # Properties related to dynamic speech pipelines
         self.speaker: Optional[SpeakerInfo] = None
         self.override_default_language: Optional[str] = None
-        if self.is_triggered_job:
+        if (job.feed_forward_track and
+                'VOICED_SEGMENTS' in job.feed_forward_track.detection_properties):
             self._add_feed_forward_properties(job)
 
 
@@ -119,8 +96,6 @@ class DynamicSpeechJobConfig:
 
 
     def _add_media_info(self, job: MpfSpeechJob):
-        self.overwrite_ids = self.is_triggered_job
-
         media_duration = float(job.media_properties.get('DURATION', -1))
         if isinstance(job, mpf.VideoJob):
             start_frame = job.start_frame
