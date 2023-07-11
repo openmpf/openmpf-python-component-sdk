@@ -26,11 +26,10 @@
 
 from collections import defaultdict
 from pathlib import Path
-from typing import Union, Optional, Mapping, List, Dict, Tuple, NamedTuple, Any
+from typing import Dict, List, Mapping, NamedTuple, Optional, Tuple, Union
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
-
 
 MpfSpeechJob = Union[mpf.AudioJob, mpf.VideoJob]
 
@@ -49,11 +48,11 @@ class NoInBoundsSpeechSegments(Exception):
 
 class SpeakerInfo(NamedTuple):
     speaker_id: str
-    gender: str
-    gender_score: float
     language: str
     language_scores: Dict[str, float]
-    speech_segs: List[Any]
+    speech_segs: List[Tuple[int, int]]
+    gender: Optional[str] = None
+    gender_score: Optional[float] = None
 
 
 class DynamicSpeechJobConfig:
@@ -148,14 +147,14 @@ class DynamicSpeechJobConfig:
         gender = mpf_util.get_property(
             properties=feed_forward_properties,
             key='GENDER',
-            default_value='',
+            default_value=None,
             prop_type=str
         )
 
         gender_score = mpf_util.get_property(
             properties=feed_forward_properties,
             key='GENDER_CONFIDENCE',
-            default_value=-1.0,
+            default_value=None,
             prop_type=float
         )
 
@@ -212,9 +211,9 @@ class DynamicSpeechJobConfig:
             speaker_id=speaker_id,
             language=language,
             language_scores=language_scores,
+            speech_segs=speech_segs,
             gender=gender,
-            gender_score=gender_score,
-            speech_segs=speech_segs
+            gender_score=gender_score
         )
 
 
