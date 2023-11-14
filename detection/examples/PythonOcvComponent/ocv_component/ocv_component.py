@@ -35,8 +35,6 @@ import mpf_component_util as mpf_util
 logger = logging.getLogger('OcvComponent')
 
 class OcvComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
-    detection_type = 'TEST OCV DETECTION TYPE'
-
 
     def get_detections_from_image_reader(
             self,

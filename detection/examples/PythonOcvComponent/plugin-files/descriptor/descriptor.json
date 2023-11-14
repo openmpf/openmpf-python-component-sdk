@@ -9,6 +9,7 @@
     "name": "PYTHONOCVTEST",
     "description": "A dummy Python detection component.",
     "actionType": "DETECTION",
+    "trackType": "TEST OCV TRACK TYPE",
     "outputChangedCounter" : 1,
     "requiresCollection": {
       "states": []

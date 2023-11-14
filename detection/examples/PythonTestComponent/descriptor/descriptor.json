@@ -9,6 +9,7 @@
     "name": "PYTHONTEST",
     "description": "A dummy Python detection component.",
     "actionType": "DETECTION",
+    "trackType": "TEST TRACK TYPE",
     "outputChangedCounter" : 1,
     "requiresCollection": {
       "states": []
