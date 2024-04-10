@@ -38,7 +38,7 @@ class SetFramePositionSeek(object):
     # frame in order to locate the closest key frame. Once OpenCV locates the key frame, it uses
     # cv2.VideoCapture.grab to advance cv2.VideoCapture's position. This means that when you need
     # to advance 16 or fewer frames, it is more efficient to just use cv2.VideoCapture.grab.
-    # https://github.com/opencv/opencv/blob/4.5.0/modules/videoio/src/cap_ffmpeg_impl.hpp#L1459
+    # https://github.com/opencv/opencv/blob/4.9.0/modules/videoio/src/cap_ffmpeg_impl.hpp#L1959
     SET_POS_MIN_FRAMES = 16
 
     @classmethod
