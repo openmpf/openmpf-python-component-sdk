@@ -131,8 +131,6 @@ class TestTextSplitter(unittest.TestCase):
         expected_chunk_lengths = [86, 116, 104, 114]
         self.assertEqual(sum(expected_chunk_lengths), len(text.replace('\n','')))
 
-        log.warn(f"DEBUG:{str(actual)}")
-
         self.assertTrue(actual[0].startswith('兵者，'))
         self.assertTrue(actual[0].endswith('而不危也；'))
         self.assertEqual(expected_chunk_lengths[0], len(actual[0]))
@@ -158,6 +156,7 @@ class TestTextSplitter(unittest.TestCase):
             self.wtp_adv_model))
 
         self.assertEqual(4, len(actual))
+        log.warn(f"DEBUG:{str(actual)}")
 
         expected_chunk_lengths = [61, 150, 61, 148]
         self.assertEqual(sum(expected_chunk_lengths), len(text.replace('\n','')))
