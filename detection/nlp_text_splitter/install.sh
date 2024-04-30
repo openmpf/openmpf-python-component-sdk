@@ -68,18 +68,41 @@ install_py_torch() {
     fi
 }
 
+download_model_names() {
+    local models_dir=$1
+    local model_names=$2
+
+    if [[ -n "$models_dir" ]] && [[ -n "$model_names" ]] ; then
+        for i in $(echo $model_names | sed "s/,/ /g")
+        do
+            local model_name=$i
+            if [[ $model_name =~ "wtp" ]]; then
+                echo "Downloading the $model_name model to $models_dir."
+                bert_model_dir="$models_dir"/"$model_name"
+                python3 -c \
+                    "from huggingface_hub import snapshot_download; \
+                    snapshot_download('benjamin/$model_name', local_dir='$bert_model_dir')"
+            else
+                echo "Downloading the $model_name spaCy model."
+                python3 -m spacy download $model_name
+            fi
+        done
+    fi
+}
+
+
 download_models() {
     local models_dir=${1:-/opt/wtp/models}
-    local model_names=$2
+
+    if [[ -n "$2" ]]; then
+        local model_names='xx_sent_ud_sm,wtp-bert-mini,'$2
+    else
+        local model_names='xx_sent_ud_sm,wtp-bert-mini'
+    fi
 
     if [[ ! $REQUESTS_CA_BUNDLE ]]; then
         export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
     fi
-
-    echo 'Downloading the xx_sent_ud_sm spaCy model.'
-    python3 -m spacy download xx_sent_ud_sm
-
-    echo "Downloading the wtp-bert-mini model to $models_dir."
 
     if ! mkdir --parents "$models_dir"; then
         echo "ERROR: Failed to create the $models_dir directory."
@@ -92,29 +115,8 @@ download_models() {
         exit 4
     fi
 
-    local bert_model_dir="$models_dir"/wtp-bert-mini
-    python3 -c \
-        "from huggingface_hub import snapshot_download; \
-        snapshot_download('benjamin/wtp-bert-mini', local_dir='$bert_model_dir')"
-
-    # Download additional models of interest specified by user.
-    if [[ -n "$model_names" ]]; then
-        for i in $(echo $model_names | sed "s/,/ /g")
-        do
-            local model_name=$i
-            if [[ $model_name =~ "wtp" ]]; then
-                echo "Downloading the $model_name WtP model."
-                bert_model_dir="$models_dir"/"$model_name"
-                python3 -c \
-                    "from huggingface_hub import snapshot_download; \
-                    snapshot_download('benjamin/wtp-bert-mini', local_dir='$bert_model_dir')"
-            else
-                echo "Downloading the $model_name spaCy model."
-                python3 -m spacy download $model_name
-            fi
-
-        done
-    fi
+    # Download models of interest specified by user.
+    download_model_names "$models_dir" "$model_names"
 }
 
 
