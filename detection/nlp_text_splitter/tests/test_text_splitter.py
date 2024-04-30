@@ -151,7 +151,6 @@ class TestTextSplitter(unittest.TestCase):
             len,
             self.wtp_adv_model))
 
-        print(actual)
         self.assertEqual(4, len(actual))
 
         expected_chunk_lengths = [61, 150, 61, 148]
