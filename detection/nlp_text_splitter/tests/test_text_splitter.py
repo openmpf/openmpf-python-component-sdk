@@ -32,6 +32,10 @@ from nlp_text_splitter import TextSplitterModel, TextSplitter
 
 TEST_DATA = pathlib.Path(__file__).parent / 'test_data'
 
+import logging
+
+log = logging.getLogger(__name__)
+
 class TestTextSplitter(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -127,6 +131,8 @@ class TestTextSplitter(unittest.TestCase):
         expected_chunk_lengths = [86, 116, 104, 114]
         self.assertEqual(sum(expected_chunk_lengths), len(text.replace('\n','')))
 
+        log.warn(f"DEBUG:{str(actual)}")
+
         self.assertTrue(actual[0].startswith('兵者，'))
         self.assertTrue(actual[0].endswith('而不危也；'))
         self.assertEqual(expected_chunk_lengths[0], len(actual[0]))
@@ -151,7 +157,6 @@ class TestTextSplitter(unittest.TestCase):
             len,
             self.wtp_adv_model))
 
-        print(actual)
         self.assertEqual(4, len(actual))
 
         expected_chunk_lengths = [61, 150, 61, 148]
