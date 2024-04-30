@@ -36,7 +36,7 @@ class TestTextSplitter(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.wtp_model = TextSplitterModel("wtp-bert-mini", "cpu", "en")
-        # cls.wtp_adv_model = TextSplitterModel("wtp-canine-s-1l", "cpu", "zh")
+        cls.wtp_adv_model = TextSplitterModel("wtp-canine-s-1l", "cpu", "zh")
         cls.spacy_model = TextSplitterModel("xx_sent_ud_sm", "cpu", "en")
 
     def test_split_engine_difference(self):
@@ -86,6 +86,93 @@ class TestTextSplitter(unittest.TestCase):
         self.assertEqual('Hello, what is your name? ', actual[0])
         # " My name is John."
         self.assertEqual('My name is John.', actual[1])
+
+    def test_split_sentence_end_punctuation(self):
+        input_text = 'Hello. How are you? asdfasdf'
+        actual = list(TextSplitter.split(input_text,
+            20,
+            10,
+            len,
+            self.wtp_model))
+
+        self.assertEqual(input_text, ''.join(actual))
+        self.assertEqual(2, len(actual))
+
+        self.assertEqual('Hello. How are you? ', actual[0])
+        self.assertEqual('asdfasdf', actual[1])
+
+        actual = list(TextSplitter.split(input_text,
+            20,
+            10,
+            len,
+            self.spacy_model))
+
+        self.assertEqual(input_text, ''.join(actual))
+        self.assertEqual(2, len(actual))
+
+        self.assertEqual('Hello. How are you? ', actual[0])
+        self.assertEqual('asdfasdf', actual[1])
+
+
+    def test_split_wtp_basic(self):
+        text = (TEST_DATA / 'art-of-war.txt').read_text().replace('\n','')
+        actual = list(TextSplitter.split(text,
+            150,
+            150,
+            len,
+            self.wtp_model))
+
+        self.assertEqual(4, len(actual))
+
+        expected_chunk_lengths = [86, 116, 104, 114]
+        self.assertEqual(sum(expected_chunk_lengths), len(text.replace('\n','')))
+
+        self.assertTrue(actual[0].startswith('兵者，'))
+        self.assertTrue(actual[0].endswith('而不危也；'))
+        self.assertEqual(expected_chunk_lengths[0], len(actual[0]))
+
+        self.assertTrue(actual[1].startswith('天者，陰陽'))
+        self.assertTrue(actual[1].endswith('兵眾孰強？'))
+        self.assertEqual(expected_chunk_lengths[1], len(actual[1]))
+
+        self.assertTrue(actual[2].startswith('士卒孰練？'))
+        self.assertTrue(actual[2].endswith('遠而示之近。'))
+        self.assertEqual(expected_chunk_lengths[2], len(actual[2]))
+
+        self.assertTrue(actual[3].startswith('利而誘之，'))
+        self.assertTrue(actual[3].endswith('勝負見矣。'))
+        self.assertEqual(expected_chunk_lengths[3], len(actual[3]))
+
+    def test_split_wtp_advanced(self):
+        text = (TEST_DATA / 'art-of-war.txt').read_text().replace('\n','')
+        actual = list(TextSplitter.split(text,
+            150,
+            150,
+            len,
+            self.wtp_adv_model))
+
+        print(actual)
+        self.assertEqual(4, len(actual))
+
+        expected_chunk_lengths = [61, 150, 61, 148]
+        self.assertEqual(sum(expected_chunk_lengths), len(text.replace('\n','')))
+
+        self.assertTrue(actual[0].startswith('兵者，'))
+        self.assertTrue(actual[0].endswith('四曰將，五曰法。'))
+        self.assertEqual(expected_chunk_lengths[0], len(actual[0]))
+
+        self.assertTrue(actual[1].startswith('道者，令民於上同意'))
+        self.assertTrue(actual[1].endswith('賞罰孰明'))
+        self.assertEqual(expected_chunk_lengths[1], len(actual[1]))
+
+        self.assertTrue(actual[2].startswith('？吾以此知勝'))
+        self.assertTrue(actual[2].endswith('因利而制權也。'))
+        self.assertEqual(expected_chunk_lengths[2], len(actual[2]))
+
+        self.assertTrue(actual[3].startswith('兵者，詭道也。'))
+        self.assertTrue(actual[3].endswith('之，勝負見矣。'))
+        self.assertEqual(expected_chunk_lengths[3], len(actual[3]))
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

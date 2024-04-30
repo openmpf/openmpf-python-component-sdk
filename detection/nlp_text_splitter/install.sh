@@ -2,11 +2,10 @@
 
 set -o errexit -o pipefail
 
-
 main() {
     if ! options=$(getopt --name "$0"  \
-            --options t:gm: \
-            --longoptions text-splitter-dir:,gpu,models-dir: \
+            --options t:gm:i: \
+            --longoptions text-splitter-dir:,gpu,models-dir:,install-models: \
             -- "$@"); then
         print_usage
     fi
@@ -24,6 +23,10 @@ main() {
             shift
             local models_dir=$1;
             ;;
+        --install-models | -i )
+            shift
+            local inst_models=$1;
+            ;;
         -- )
             shift
             break
@@ -34,7 +37,7 @@ main() {
 
     install_text_splitter "$text_splitter_dir"
     install_py_torch "$gpu_enabled"
-    download_models "$models_dir"
+    download_models "$models_dir" "$inst_models"
 }
 
 
@@ -67,12 +70,13 @@ install_py_torch() {
 
 download_models() {
     local models_dir=${1:-/opt/wtp/models}
+    local model_names=$2
 
     if [[ ! $REQUESTS_CA_BUNDLE ]]; then
         export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
     fi
 
-    echo 'Downloading the xx_sent_ud_sm Spacy model.'
+    echo 'Downloading the xx_sent_ud_sm spaCy model.'
     python3 -m spacy download xx_sent_ud_sm
 
     echo "Downloading the wtp-bert-mini model to $models_dir."
@@ -92,13 +96,32 @@ download_models() {
     python3 -c \
         "from huggingface_hub import snapshot_download; \
         snapshot_download('benjamin/wtp-bert-mini', local_dir='$bert_model_dir')"
+
+    # Download additional models of interest specified by user.
+    if [[ -n "$model_names" ]]; then
+        for i in $(echo $model_names | sed "s/,/ /g")
+        do
+            local model_name=$i
+            if [[ $model_name =~ "wtp" ]]; then
+                echo "Downloading the $model_name WtP model."
+                bert_model_dir="$models_dir"/"$model_name"
+                python3 -c \
+                    "from huggingface_hub import snapshot_download; \
+                    snapshot_download('benjamin/wtp-bert-mini', local_dir='$bert_model_dir')"
+            else
+                echo "Downloading the $model_name spaCy model."
+                python3 -m spacy download $model_name
+            fi
+
+        done
+    fi
 }
 
 
 print_usage() {
     echo
     echo "Usage:
-$0 [--text-splitter-dir|-t <path_to_src>] [--gpu|-g] [--models-dir|-m <models-dir>]"
+$0 [--text-splitter-dir|-t <path_to_src>] [--gpu|-g] [--models-dir|-m <models-dir>] [--install-models|-i <model-names>]"
     exit 1
 }
 
