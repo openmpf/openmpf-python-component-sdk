@@ -5,7 +5,7 @@ set -o errexit -o pipefail
 main() {
     if ! options=$(getopt --name "$0"  \
             --options t:gm:w:b: \
-            --longoptions text-splitter-dir:,gpu,models-dir:,install-wtp-models:,install-spacy-models: \
+            --longoptions text-splitter-dir:,gpu,models-dir:,install-wtp-model:,install-spacy-model: \
             -- "$@"); then
         print_usage
     fi
@@ -26,11 +26,11 @@ main() {
             shift
             models_dir=$1;
             ;;
-        --install-wtp-models | -w )
+        --install-wtp-model | -w )
             shift
             wtp_models+=("$1")
             ;;
-        --install-spacy-models | -s )
+        --install-spacy-model | -s )
             shift
             spacy_models+=("$1")
             ;;
@@ -122,19 +122,19 @@ download_spacy_models() {
 print_usage() {
     echo
     echo "Usage:
-$0 [--text-splitter-dir|-t <path_to_src>] [--gpu|-g] [--models-dir|-m <models-dir>] [--install-wtp-models|-w <model-name>]* [--install-spacy-models,|-s <model-name>]*
+$0 [--text-splitter-dir|-t <path_to_src>] [--gpu|-g] [--models-dir|-m <models-dir>] [--install-wtp-model|-w <model-name>]* [--install-spacy-model|-s <model-name>]*
 Options
-    --text-splitter-dir, -t <path>:     Path to text splitter source code. (defaults to to the
-                                        same directory as this script)
-    --gpu, -g:                          Install the GPU version of PyTorch
-    --models-dir, -m <path>:            Path where WTP models will be stored.
-                                        (defaults to /opt/wtp/models)
-    --install-wtp-models, -w <name>:    Names of WTP models to install in addtion to wtp-bert-mini.
-                                        This option can be provided more than once to specify
-                                        multiple models.
-    --install-spacy-models | -s <name>: Names of spaCy models to install in addtion to
-                                        xx_sent_ud_sm.  The option can be provided more than once
-                                        to specify multiple models.
+    --text-splitter-dir, -t <path>:    Path to text splitter source code. (defaults to to the
+                                       same directory as this script)
+    --gpu, -g:                         Install the GPU version of PyTorch
+    --models-dir, -m <path>:           Path where WTP models will be stored.
+                                       (defaults to /opt/wtp/models)
+    --install-wtp-model, -w <name>:    Name of a WTP model to install in addtion to wtp-bert-mini.
+                                       This option can be provided more than once to specify
+                                       multiple models.
+    --install-spacy-model | -s <name>: Names of a spaCy model to install in addtion to
+                                       xx_sent_ud_sm. The option can be provided more than once
+                                       to specify multiple models.
 "
     exit 1
 }

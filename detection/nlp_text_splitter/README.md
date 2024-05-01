@@ -43,7 +43,10 @@ Please note that several customizations are supported:
   change the default WtP model installation directory
   (default: `/opt/wtp/models`).
 
-- `--install-models|-i <model-names>` - Add this parameter to
-  specify a comma-separated list of WtP and spaCy models for
-  installation. Please note, no spaces should be added
-  between model names (i.e. `model_1,model_2,etc.`).
+- `--install-wtp-model|-w <model-name>:` - Add this parameter to specify
+  additional WTP models for installation. This parameter can be provided
+  multiple times to install more than one model.
+
+- `--install-spacy-model|-s <model-name>:` - Add this parameter to specify
+  additional spaCy models for installation. This parameter can be provided
+  multiple times to install more than one model.
