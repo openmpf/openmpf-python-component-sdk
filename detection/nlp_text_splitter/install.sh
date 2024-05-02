@@ -36,7 +36,7 @@ main() {
         print_usage
     fi
     eval set -- "$options"
-    local wtp_models_dir =/opt/wtp/models
+    local wtp_models_dir=/opt/wtp/models
     local wtp_models=("wtp-bert-mini")
     local spacy_models=("xx_sent_ud_sm")
     while true; do
@@ -50,7 +50,7 @@ main() {
             ;;
         --wtp-models-dir  | -m )
             shift
-            wtp_models_dir =$1;
+            wtp_models_dir=$1;
             ;;
         --install-wtp-model | -w )
             shift
@@ -70,7 +70,7 @@ main() {
 
     install_text_splitter "$text_splitter_dir"
     install_py_torch "$gpu_enabled"
-    download_wtp_models "$wtp_models_dir " "${wtp_models[@]}"
+    download_wtp_models "$wtp_models_dir" "${wtp_models[@]}"
     download_spacy_models "${spacy_models[@]}"
 }
 
@@ -104,35 +104,35 @@ install_py_torch() {
 
 
 download_wtp_models() {
-    local wtp_models_dir =$1
+    local wtp_models_dir=$1
     shift
     local model_names=("$@")
-    setup_wtp_models_dir  "$wtp_models_dir "
+    setup_wtp_models_dir "$wtp_models_dir"
 
     for model_name in "${model_names[@]}"; do
-        echo "Downloading the $model_name model to $wtp_models_dir ."
-        local wtp_model_dir="$wtp_models_dir /$model_name"
+        echo "Downloading the $model_name model to $wtp_models_dir."
+        local wtp_model_dir="$wtp_models_dir/$model_name"
         python3 -c \
             "from huggingface_hub import snapshot_download; \
             snapshot_download('benjamin/$model_name', local_dir='$wtp_model_dir')"
     done
 }
 
-setup_wtp_models_dir () {
-    local wtp_models_dir =$1
+setup_wtp_models_dir() {
+    local wtp_models_dir=$1
 
     if [[ ! $REQUESTS_CA_BUNDLE ]]; then
         export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
     fi
 
-    if ! mkdir --parents "$wtp_models_dir "; then
-        echo "ERROR: Failed to create the $wtp_models_dir  directory."
+    if ! mkdir --parents "$wtp_models_dir"; then
+        echo "ERROR: Failed to create the $wtp_models_dir directory."
         exit 3
     fi
 
-    if [[ ! -w "$wtp_models_dir " ]]; then
-        echo -n "ERROR: The model directory, \"$wtp_models_dir \" is not writable by the current user. "
-        echo "The permissions on \"$wtp_models_dir \" must be modified."
+    if [[ ! -w "$wtp_models_dir" ]]; then
+        echo -n "ERROR: The model directory, \"$wtp_models_dir\" is not writable by the current user. "
+        echo "The permissions on \"$wtp_models_dir\" must be modified."
         exit 4
     fi
 }
