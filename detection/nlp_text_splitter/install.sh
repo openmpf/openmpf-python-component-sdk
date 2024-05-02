@@ -1,16 +1,42 @@
 #!/usr/bin/env bash
 
+#############################################################################
+# NOTICE                                                                    #
+#                                                                           #
+# This software (or technical data) was produced for the U.S. Government    #
+# under contract, and is subject to the Rights in Data-General Clause       #
+# 52.227-14, Alt. IV (DEC 2007).                                            #
+#                                                                           #
+# Copyright 2024 The MITRE Corporation. All Rights Reserved.                #
+#############################################################################
+
+#############################################################################
+# Copyright 2024 The MITRE Corporation                                      #
+#                                                                           #
+# Licensed under the Apache License, Version 2.0 (the "License");           #
+# you may not use this file except in compliance with the License.          #
+# You may obtain a copy of the License at                                   #
+#                                                                           #
+#    http://www.apache.org/licenses/LICENSE-2.0                             #
+#                                                                           #
+# Unless required by applicable law or agreed to in writing, software       #
+# distributed under the License is distributed on an "AS IS" BASIS,         #
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  #
+# See the License for the specific language governing permissions and       #
+# limitations under the License.                                            #
+#############################################################################
+
 set -o errexit -o pipefail
 
 main() {
     if ! options=$(getopt --name "$0"  \
-            --options t:gm:w:b: \
-            --longoptions text-splitter-dir:,gpu,models-dir:,install-wtp-model:,install-spacy-model: \
+            --options t:gm:w:s: \
+            --longoptions text-splitter-dir:,gpu,wtp-models-dir :,install-wtp-model:,install-spacy-model: \
             -- "$@"); then
         print_usage
     fi
     eval set -- "$options"
-    local models_dir=/opt/wtp/models
+    local wtp_models_dir =/opt/wtp/models
     local wtp_models=("wtp-bert-mini")
     local spacy_models=("xx_sent_ud_sm")
     while true; do
@@ -22,9 +48,9 @@ main() {
         --gpu | -g )
             local gpu_enabled=true
             ;;
-        --models-dir | -m )
+        --wtp-models-dir  | -m )
             shift
-            models_dir=$1;
+            wtp_models_dir =$1;
             ;;
         --install-wtp-model | -w )
             shift
@@ -44,7 +70,7 @@ main() {
 
     install_text_splitter "$text_splitter_dir"
     install_py_torch "$gpu_enabled"
-    download_wtp_models "$models_dir" "${wtp_models[@]}"
+    download_wtp_models "$wtp_models_dir " "${wtp_models[@]}"
     download_spacy_models "${spacy_models[@]}"
 }
 
@@ -78,35 +104,35 @@ install_py_torch() {
 
 
 download_wtp_models() {
-    local models_dir=$1
+    local wtp_models_dir =$1
     shift
     local model_names=("$@")
-    setup_models_dir "$models_dir"
+    setup_wtp_models_dir  "$wtp_models_dir "
 
     for model_name in "${model_names[@]}"; do
-        echo "Downloading the $model_name model to $models_dir."
-        local wtp_model_dir="$models_dir/$model_name"
+        echo "Downloading the $model_name model to $wtp_models_dir ."
+        local wtp_model_dir="$wtp_models_dir /$model_name"
         python3 -c \
             "from huggingface_hub import snapshot_download; \
             snapshot_download('benjamin/$model_name', local_dir='$wtp_model_dir')"
     done
 }
 
-setup_models_dir() {
-    local models_dir=$1
+setup_wtp_models_dir () {
+    local wtp_models_dir =$1
 
     if [[ ! $REQUESTS_CA_BUNDLE ]]; then
         export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
     fi
 
-    if ! mkdir --parents "$models_dir"; then
-        echo "ERROR: Failed to create the $models_dir directory."
+    if ! mkdir --parents "$wtp_models_dir "; then
+        echo "ERROR: Failed to create the $wtp_models_dir  directory."
         exit 3
     fi
 
-    if [[ ! -w "$models_dir" ]]; then
-        echo -n "ERROR: The model directory, \"$models_dir\" is not writable by the current user. "
-        echo "The permissions on \"$models_dir\" must be modified."
+    if [[ ! -w "$wtp_models_dir " ]]; then
+        echo -n "ERROR: The model directory, \"$wtp_models_dir \" is not writable by the current user. "
+        echo "The permissions on \"$wtp_models_dir \" must be modified."
         exit 4
     fi
 }
@@ -122,12 +148,12 @@ download_spacy_models() {
 print_usage() {
     echo
     echo "Usage:
-$0 [--text-splitter-dir|-t <path_to_src>] [--gpu|-g] [--models-dir|-m <models-dir>] [--install-wtp-model|-w <model-name>]* [--install-spacy-model|-s <model-name>]*
+$0 [--text-splitter-dir|-t <path_to_src>] [--gpu|-g] [--wtp-models-dir |-m <wtp-models-dir >] [--install-wtp-model|-w <model-name>]* [--install-spacy-model|-s <model-name>]*
 Options
     --text-splitter-dir, -t <path>:    Path to text splitter source code. (defaults to to the
                                        same directory as this script)
     --gpu, -g:                         Install the GPU version of PyTorch
-    --models-dir, -m <path>:           Path where WTP models will be stored.
+    --wtp-models-dir , -m <path>:      Path where WTP models will be stored.
                                        (defaults to /opt/wtp/models)
     --install-wtp-model, -w <name>:    Name of a WTP model to install in addtion to wtp-bert-mini.
                                        This option can be provided more than once to specify

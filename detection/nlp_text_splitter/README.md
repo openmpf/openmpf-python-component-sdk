@@ -37,7 +37,7 @@ Please note that several customizations are supported:
 - `--gpu`: Add this parameter to the installation command line above to
   setup a PyTorch installation with CUDA (GPU) libraries.
 
-- `--models-dir|-m <models-dir>`: Add this parameter to
+- `--wtp-models-dir |-m <wtp-models-dir >`: Add this parameter to
   change the default WtP model installation directory
   (default: `/opt/wtp/models`).
 

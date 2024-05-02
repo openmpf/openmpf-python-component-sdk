@@ -5,11 +5,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2023 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2024 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2023 The MITRE Corporation                                      #
+# Copyright 2024 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -112,6 +112,42 @@ class TestTextSplitter(unittest.TestCase):
 
         self.assertEqual('Hello. How are you? ', actual[0])
         self.assertEqual('asdfasdf', actual[1])
+
+
+    def test_guess_split_edge_cases(self):
+        input_text = ("This is a sentence (Dr.Test). Is this,"
+                      " a sentence as well? Maybe...maybe not?"
+                      " \n All done, I think!")
+
+        # Split using WtP model.
+        actual = list(TextSplitter.split(input_text,
+            30,
+            30,
+            len,
+            self.wtp_model))
+
+        self.assertEqual(input_text, ''.join(actual))
+        self.assertEqual(4, len(actual))
+
+        # WtP should detect and split out each sentence
+        self.assertEqual("This is a sentence (Dr.Test). ", actual[0])
+        self.assertEqual("Is this, a sentence as well? ", actual[1])
+        self.assertEqual("Maybe...maybe not? \n ", actual[2])
+        self.assertEqual("All done, I think!", actual[3])
+
+        actual = list(TextSplitter.split(input_text,
+            35,
+            35,
+            len,
+            self.spacy_model))
+        self.assertEqual(input_text, ''.join(actual))
+        self.assertEqual(4, len(actual))
+
+        # Split using spaCy model.
+        self.assertEqual("This is a sentence (Dr.Test). ", actual[0])
+        self.assertEqual("Is this, a sentence as well? ", actual[1])
+        self.assertEqual("Maybe...maybe not? \n ", actual[2])
+        self.assertEqual("All done, I think!", actual[3])
 
 
     def test_split_wtp_basic(self):
