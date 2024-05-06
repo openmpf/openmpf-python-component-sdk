@@ -63,6 +63,7 @@ class TextSplitterModel:
 
     def __init__(self, model_name: str, model_setting: str, default_lang: str = "en") -> None:
         self._model_name = ""
+        self._model_setting = ""
         self._default_lang = default_lang
         self._mandatory_wtp_language = False
         self.split = lambda t, **param: [t]
@@ -102,9 +103,11 @@ class TextSplitterModel:
             self._mandatory_wtp_language = True
             self._default_lang = default_lang
 
-        if self._model_name == wtp_model_name:
-            log.info(f"Using cached model: {self._model_name}")
+        if self._model_name == wtp_model_name and self._model_setting == model_setting:
+            log.info(f"Using cached model, running on {self._model_setting}: "
+                     f"{self._model_name}")
         else:
+            self._model_setting = model_setting
             self._model_name = wtp_model_name
             # Check if model has been downloaded
             if os.path.exists(os.path.join(WTP_MODELS_PATH, wtp_model_name)):
