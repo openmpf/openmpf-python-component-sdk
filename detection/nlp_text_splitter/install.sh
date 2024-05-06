@@ -31,7 +31,7 @@ set -o errexit -o pipefail
 main() {
     if ! options=$(getopt --name "$0"  \
             --options t:gm:w:s: \
-            --longoptions text-splitter-dir:,gpu,wtp-models-dir :,install-wtp-model:,install-spacy-model: \
+            --longoptions text-splitter-dir:,gpu,wtp-models-dir:,install-wtp-model:,install-spacy-model: \
             -- "$@"); then
         print_usage
     fi
