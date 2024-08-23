@@ -32,7 +32,7 @@ build-backend = "setuptools.build_meta"
 name = "nlp_text_splitter"
 version = "9.0"
 dependencies = [
-    "spacy>=3.7.4",
+    "spacy>=3.7.4,<3.7.6",
     "wtpsplit>=1.3.0",
     # Starting with version 8.2.5, thinc will try to compile C extensions during install.
     # Restricting the version of thinc is easier than installing a C compiler in every component
