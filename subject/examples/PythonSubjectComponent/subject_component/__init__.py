@@ -49,7 +49,7 @@ class SubjectExampleComponent:
 
         logger.info(f'Sending response with {len(entities)} entities.')
         return mpf_sub.SubjectTrackingResults(
-                {mpf_sub.EntityType("example entity"): entities},
+                {mpf_sub.EntityType("example entity type"): entities},
                 {mpf_sub.RelationshipType("example relationship"): relationships},
                 {"TEST_PROP": "TEST_VAL"})
 
