@@ -45,6 +45,7 @@ RelationshipType = NewType('RelationshipType', str)
 
 MediaId = NewType('MediaId', str)
 
+# Examples FACE, CLASS
 DetectionComponentType = NewType('DetectionComponentType', str)
 
 K = TypeVar('K')
