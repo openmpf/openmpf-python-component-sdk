@@ -164,6 +164,9 @@ class Rect(NamedTuple, Generic[TNumber]):
     def empty(self) -> bool:
         return self.area <= 0
 
+    def __bool__(self) -> bool:
+        return not self.empty
+
     @property
     def area(self) -> TNumber:
         return self.width * self.height
@@ -174,7 +177,6 @@ class Rect(NamedTuple, Generic[TNumber]):
 
     def union(self, other: _RectLike[TNumber]) -> Rect[TNumber]:
         other = Rect.__rectify(other)
-
         if self.empty:
             return other
         elif other.empty:
@@ -184,6 +186,7 @@ class Rect(NamedTuple, Generic[TNumber]):
                 element_wise_op(min, self.tl, other.tl),
                 element_wise_op(max, self.br, other.br))
 
+    __or__ = union
 
     def intersection(self, other: _RectLike[TNumber]) -> Rect[TNumber]:
         other = Rect.__rectify(other)
@@ -193,11 +196,12 @@ class Rect(NamedTuple, Generic[TNumber]):
 
         if top_left.x >= bottom_right.x or top_left.y >= bottom_right.y:
             if isinstance(self.x, int):
-                return Rect(0, 0, 0, 0)
+                return _empty_int_rect
             else:
-                return Rect(0.0, 0.0, 0.0, 0.0)
+                return _empty_float_rect
         return Rect.from_corners(top_left, bottom_right)
 
+    __and__ = intersection
 
     @staticmethod
     def from_corners(point1: _PointLike[TNumber], point2: _PointLike[TNumber]) -> Rect[TNumber]:
@@ -229,8 +233,10 @@ class Rect(NamedTuple, Generic[TNumber]):
                 return Rect.from_corners(obj1, obj2)
             if isinstance(obj2, Size):
                 return Rect.from_corner_and_size(obj1, obj2)
-        raise TypeError('Could not convert argument %s to Rect.' % (obj,))
+        raise TypeError(f'Could not convert argument {obj} to Rect.')
 
+_empty_int_rect = Rect(0, 0, 0, 0)
+_empty_float_rect = Rect(0.0, 0.0, 0.0, 0.0)
 
 _RectLike = Union[
     'Rect[TNumber]',
