@@ -94,10 +94,6 @@ install_py_torch() {
         pip3 install "$torch_package"
     else
         echo "Installing CPU only version of PyTorch."
-        # networkx is a dependency of PyTorch, but the version of networkx in the PyTorch package
-        # index requires Python 3.9. networkx needs to be installed in a separate command so that
-        # pip can get networkx from PyPi.
-        pip3 install 'networkx~=3.1'
         pip3 install "$torch_package" --index-url https://download.pytorch.org/whl/cpu
     fi
 }
