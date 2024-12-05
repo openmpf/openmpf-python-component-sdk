@@ -29,7 +29,7 @@ from __future__ import annotations
 import collections
 import uuid
 from dataclasses import dataclass, field
-from typing import Collection, Mapping, NamedTuple, NewType, Sequence, TypeVar
+from typing import Collection, Mapping, NamedTuple, NewType, Sequence, TypeVar, Protocol
 
 import mpf_component_api as mpf
 
@@ -51,6 +51,11 @@ DetectionComponentType = NewType('DetectionComponentType', str)
 K = TypeVar('K')
 V = TypeVar('V')
 Multimap = Mapping[K, Collection[V]]
+
+
+class SubjectTrackingComponent(Protocol):
+    def get_subjects(self, job: SubjectTrackingJob) -> SubjectTrackingResults:
+        ...
 
 
 class SubjectTrackingJob(NamedTuple):
