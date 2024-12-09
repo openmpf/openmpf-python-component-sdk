@@ -1,0 +1,14 @@
+{
+    "componentName": "PythonSubjectComponent",
+    "componentVersion": "9.0",
+    "sourceLanguage": "python",
+    "componentLibrary": "PythonSubjectComponent",
+    "properties": [
+        {
+            "name": "PROP_NAME",
+            "description" : "Description of PROP_NAME",
+            "type": "INT",
+            "defaultValue": "5"
+        }
+    ]
+}
