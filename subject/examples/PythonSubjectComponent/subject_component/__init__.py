@@ -45,7 +45,7 @@ class SubjectExampleComponent:
             for track_id in detection_job.results:
                 entity = get_single_track_entity(track_id)
                 entities.append(entity)
-                relationships.append(get_relationship(entity, detection_job.media_id))
+                relationships.append(get_relationship(detection_job.media_id, entity))
 
         logger.info(f'Sending response with {len(entities)} entities.')
         return mpf_sub.SubjectTrackingResults(
@@ -59,5 +59,6 @@ def get_single_track_entity(track_id: mpf_sub.TrackId) -> mpf_sub.Entity:
             uuid.uuid4(), 1, {mpf_sub.TrackType("example track type"): (track_id,)})
 
 
-def get_relationship(entity: mpf_sub.Entity, media_id: mpf_sub.MediaId) -> mpf_sub.Relationship:
-    return mpf_sub.Relationship((entity.id,), (mpf_sub.MediaReference(media_id, (0,)),))
+def get_relationship(media_id: mpf_sub.MediaId, *entities: mpf_sub.Entity) -> mpf_sub.Relationship:
+    entity_ids = [e.id for e in entities]
+    return mpf_sub.Relationship(entity_ids, (mpf_sub.MediaReference(media_id, (0,)),))
