@@ -25,3 +25,5 @@
 #############################################################################
 
 from .mpf_component_api import *
+
+from .timing import Timing
