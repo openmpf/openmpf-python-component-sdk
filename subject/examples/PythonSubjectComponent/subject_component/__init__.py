@@ -40,12 +40,19 @@ class SubjectExampleComponent:
         logger.info(f'Received job: {job.job_name}')
         jobs = itertools.chain(job.video_jobs, job.image_jobs)
         entities = []
-        relationships = []
         for detection_job in jobs:
             for track_id in detection_job.results:
                 entity = get_single_track_entity(track_id)
                 entities.append(entity)
-                relationships.append(get_relationship(detection_job.media_id, entity))
+
+        if len(entities) >= 2:
+            if job.video_jobs:
+                media_id = job.video_jobs[0].media_id
+            else:
+                media_id = job.image_jobs[0].media_id
+            relationships = [get_relationship(media_id, entities[0], entities[1])]
+        else:
+            relationships = ()
 
         logger.info(f'Sending response with {len(entities)} entities.')
         return mpf_sub.SubjectTrackingResults(
