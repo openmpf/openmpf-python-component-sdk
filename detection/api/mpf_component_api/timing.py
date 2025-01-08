@@ -56,7 +56,7 @@ class Timing:
 
     @classmethod
     def with_logger(cls, logger: logging.Logger, level: int = logging.INFO):
-        return cls(LoggerReporter(logger, level) )
+        return cls(LoggerReporter(logger, level))
 
 
     @contextlib.contextmanager
@@ -96,30 +96,29 @@ class Timing:
             func = name_or_func
             return typing.cast(
                 Callable[..., T],
-                self._wrap_func(func, func.__name__, metrics))
+                self._decorate_func(func, func.__name__, metrics))
         else:
             # Handle the case where parameters were passed to the decorator.
             name = name_or_func
-            return lambda func: self._wrap_func(func, name, metrics)
+            return lambda func: self._decorate_func(func, name, metrics)
 
-    def _wrap_func(
+    def _decorate_func(
             self,
             func: Callable[..., T],
             timer_name: str,
             metrics: Optional[Metrics]):
         if inspect.isgeneratorfunction(func):
             @functools.wraps(func)
-            def generator_wrapper(*args, **kwargs):
+            def generator_with_timing(*args, **kwargs):
                 with self.timer_ctx(timer_name, metrics):
-                    rv = yield from func(*args, **kwargs)
-                    return rv
-            return generator_wrapper
+                    return (yield from func(*args, **kwargs))
+            return generator_with_timing
         else:
             @functools.wraps(func)
-            def func_wrapper(*args, **kwargs):
+            def func_with_timing(*args, **kwargs):
                 with self.timer_ctx(timer_name, metrics):
                     return func(*args, **kwargs)
-            return func_wrapper
+            return func_with_timing
 
 
     def manual_timer(self, timer_name: str) -> Timer:
