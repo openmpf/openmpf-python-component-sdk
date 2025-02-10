@@ -24,6 +24,48 @@
 # limitations under the License.                                            #
 #############################################################################
 
-from .mpf_component_api import *
+import itertools
+import logging
+import uuid
 
-from .timing import Timing
+import mpf_subject_api as mpf_sub
+
+logger = logging.getLogger('SubjectExampleComponent')
+
+class SubjectExampleComponent:
+    def __init__(self) -> None:
+        logger.info('Created instance of SubjectExampleComponent.')
+
+    def get_subjects(self, job: mpf_sub.SubjectTrackingJob) -> mpf_sub.SubjectTrackingResults:
+        logger.info(f'Received job: {job.job_name}')
+        jobs = itertools.chain(job.video_jobs, job.image_jobs)
+        entities = []
+        for detection_job in jobs:
+            for track_id in detection_job.results:
+                entity = get_single_track_entity(track_id)
+                entities.append(entity)
+
+        if len(entities) >= 2:
+            if job.video_jobs:
+                media_id = job.video_jobs[0].media_id
+            else:
+                media_id = job.image_jobs[0].media_id
+            relationships = [get_relationship(media_id, entities[0], entities[1])]
+        else:
+            relationships = ()
+
+        logger.info(f'Sending response with {len(entities)} entities.')
+        return mpf_sub.SubjectTrackingResults(
+                {mpf_sub.EntityType("example entity type"): entities},
+                {mpf_sub.RelationshipType("example relationship"): relationships},
+                {"TEST_PROP": "TEST_VAL"})
+
+
+def get_single_track_entity(track_id: mpf_sub.TrackId) -> mpf_sub.Entity:
+    return mpf_sub.Entity(
+            uuid.uuid4(), 1, {mpf_sub.TrackType("example track type"): (track_id,)})
+
+
+def get_relationship(media_id: mpf_sub.MediaId, *entities: mpf_sub.Entity) -> mpf_sub.Relationship:
+    entity_ids = [e.id for e in entities]
+    return mpf_sub.Relationship(entity_ids, (mpf_sub.MediaReference(media_id, (0,)),))

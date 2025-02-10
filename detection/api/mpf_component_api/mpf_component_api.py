@@ -140,5 +140,3 @@ class DetectionException(Exception):
             return f'{self.args[0]} (DetectionError.{self.error_code.name})'
         else:
             return super().__str__()
-
-

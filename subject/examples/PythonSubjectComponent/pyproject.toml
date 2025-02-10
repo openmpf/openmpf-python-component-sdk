@@ -24,6 +24,13 @@
 # limitations under the License.                                            #
 #############################################################################
 
-from .mpf_component_api import *
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
 
-from .timing import Timing
+[project]
+name = "PythonSubjectComponent"
+version = "9.0"
+
+[project.entry-points."mpf.exported_component"]
+component = "subject_component:SubjectExampleComponent"

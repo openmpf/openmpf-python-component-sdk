@@ -24,6 +24,15 @@
 # limitations under the License.                                            #
 #############################################################################
 
-from .mpf_component_api import *
+ARG BUILD_REGISTRY
+ARG BUILD_TAG=latest
+FROM ${BUILD_REGISTRY}openmpf_python_subject_build:${BUILD_TAG} AS build_component
 
-from .timing import Timing
+RUN --mount=target=.,readwrite install-component.sh
+
+
+FROM ${BUILD_REGISTRY}openmpf_python_subject_executor:${BUILD_TAG}
+
+COPY --from=build_component $COMPONENT_VIRTUALENV $COMPONENT_VIRTUALENV
+
+COPY --from=build_component $PLUGINS_DIR/PythonSubjectComponent $PLUGINS_DIR/PythonSubjectComponent
