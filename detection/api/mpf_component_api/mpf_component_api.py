@@ -26,7 +26,7 @@
 
 import dataclasses
 import enum
-from typing import Any, Dict, Mapping, NamedTuple, Optional
+from typing import Any, Dict, List, Mapping, NamedTuple, Optional
 
 
 @dataclasses.dataclass
@@ -71,6 +71,16 @@ class VideoJob(NamedTuple):
     job_properties: Mapping[str, str]
     media_properties: Mapping[str, str]
     feed_forward_track: Optional[VideoTrack] = None
+
+
+class MultiTrackVideoJob(NamedTuple):
+    job_name: str
+    data_uri: str
+    start_frame: int
+    stop_frame: int
+    job_properties: Mapping[str, str]
+    media_properties: Mapping[str, str]
+    feed_forward_tracks: Optional[List[VideoTrack]] = None
 
 
 class ImageJob(NamedTuple):
