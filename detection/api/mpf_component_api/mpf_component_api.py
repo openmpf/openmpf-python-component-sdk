@@ -73,7 +73,7 @@ class VideoJob(NamedTuple):
     feed_forward_track: Optional[VideoTrack] = None
 
 
-class MultiTrackVideoJob(NamedTuple):
+class AllVideoTracksJob(NamedTuple):
     job_name: str
     data_uri: str
     start_frame: int

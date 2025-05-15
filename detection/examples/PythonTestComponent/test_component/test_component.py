@@ -97,14 +97,14 @@ class TestComponent(object):
 
 
     # Doesn't need to be a instance method, just making sure executor can call instance methods
-    def get_detections_from_multi_track_video(self, video_job):
-        logger.info('Received multi-track video job: %s', video_job)
+    def get_detections_from_all_video_tracks(self, video_job):
+        logger.info('Received all tracks video job: %s', video_job)
         random_uuid = uuid.uuid4()
 
         if video_job.feed_forward_tracks is not None:
             for feed_forward_track in video_job.feed_forward_tracks:
-                feed_forward_track.detection_properties['annotated_prop_multi_track'] = 'annotated_val_multi_track'
-                feed_forward_track.detection_properties['uuid_multi_track'] = random_uuid
+                feed_forward_track.detection_properties['annotated_prop_all_tracks'] = 'annotated_val_all_tracks'
+                feed_forward_track.detection_properties['uuid_all_tracks'] = random_uuid
             return video_job.feed_forward_tracks
         
         return []
