@@ -25,12 +25,11 @@
 #############################################################################
 
 import logging
+import uuid
 
 import mpf_component_api as mpf
 
-
 logger = logging.getLogger('TestComponent')
-
 
 class TestComponent(object):
 
@@ -40,7 +39,7 @@ class TestComponent(object):
 
     @staticmethod  # Make sure executor can call static methods
     def get_detections_from_image(image_job):
-        logger.info('[%s] Received image job: %s', image_job.job_name, image_job)
+        logger.info('Received image job: %s', image_job)
         if image_job.feed_forward_location is not None:
             yield image_job.feed_forward_location
             return
@@ -63,13 +62,17 @@ class TestComponent(object):
                                  'ECHO_JOB': echo_job,
                                  'ECHO_MEDIA': echo_media})
 
-        logger.info('[%s] Found %s detections', image_job.job_name, 2)
+        logger.info('Found %s detections', 2)
 
 
     # Doesn't need to be a instance method, just making sure executor can call instance methods
     def get_detections_from_video(self, video_job):
-        logger.info('[%s] Received video job: %s', video_job.job_name, video_job)
+        logger.info('Received video job: %s', video_job)
+        random_uuid = uuid.uuid4()
+
         if video_job.feed_forward_track is not None:
+            video_job.feed_forward_track.detection_properties['annotated_prop_single_track'] = 'annotated_val_single_track'
+            video_job.feed_forward_track.detection_properties['uuid_single_track'] = random_uuid
             return [video_job.feed_forward_track]
 
         echo_job, echo_media = self.get_echo_msgs(video_job)
@@ -95,17 +98,21 @@ class TestComponent(object):
 
     # Doesn't need to be a instance method, just making sure executor can call instance methods
     def get_detections_from_multi_track_video(self, video_job):
-        logger.info('[%s] Received multi-track video job: %s', video_job.job_name, video_job)
+        logger.info('Received multi-track video job: %s', video_job)
+        random_uuid = uuid.uuid4()
+
         if video_job.feed_forward_tracks is not None:
             for feed_forward_track in video_job.feed_forward_tracks:
-                feed_forward_track.detection_properties['annotated_prop1'] = 'annotated_val1'
-            return [video_job.feed_forward_tracks]
+                feed_forward_track.detection_properties['annotated_prop_multi_track'] = 'annotated_val_multi_track'
+                feed_forward_track.detection_properties['uuid_multi_track'] = random_uuid
+            return video_job.feed_forward_tracks
+        
         return []
 
 
     @classmethod  # Doesn't need to be a class method, just making sure executor can call class methods
     def get_detections_from_audio(cls, audio_job):
-        logger.info('[%s] Received audio job: %s', audio_job.job_name, audio_job)
+        logger.info('Received audio job: %s', audio_job)
         if audio_job.feed_forward_track is not None:
             return audio_job.feed_forward_track,
         echo_job, echo_media = cls.get_echo_msgs(audio_job)
