@@ -26,7 +26,7 @@ this model lacks support handling for Chinese punctuation.
 To install this tool users will need to run `./install.sh`. By default this will set up a
 CPU-only PyTorch installation. `./install.sh` requires a C++ compiler and the Python development
 headers to be installed. If they are not already installed, they can be installed by running
-`apt-get install g++ python3.8-dev`.
+`apt-get install g++ python3.12-dev`.
 
 Please note that several customizations are supported:
 

@@ -25,7 +25,7 @@
 #############################################################################
 
 import logging
-import pkg_resources
+import importlib.resources
 import os
 from typing import Iterable
 
@@ -84,9 +84,7 @@ class OcvComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
         return [mpf.VideoTrack(0, last_frame_read, frame_locations=detections)]
 
 
-
-
-ModelSettings = (mpf_util.ModelsIniParser(pkg_resources.resource_filename(__name__, 'models'))
+ModelSettings = (mpf_util.ModelsIniParser(importlib.resources.files(__name__) / 'models')
                  .register_path_field('network')
                  .register_path_field('names')
                  .register_int_field('num_classes')
