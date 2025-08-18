@@ -26,7 +26,8 @@
 
 import logging
 import os
-import pkg_resources
+import importlib.resources
+from importlib.resources.abc import Traversable
 
 import spacy
 from wtpsplit import WtP
@@ -40,9 +41,7 @@ import torch
 DEFAULT_WTP_MODELS = "/opt/wtp/models"
 
 # If we want to package model installation with this utility in the future:
-WTP_MODELS_PATH = pkg_resources.resource_filename(
-   __name__, "models"
-)
+WTP_MODELS_PATH: Traversable = importlib.resources.files(__name__) / 'models'
 
 log = logging.getLogger(__name__)
 
@@ -110,22 +109,21 @@ class TextSplitterModel:
             self._model_setting = model_setting
             self._model_name = wtp_model_name
             # Check if model has been downloaded
-            if os.path.exists(os.path.join(WTP_MODELS_PATH, wtp_model_name)):
+            if (WTP_MODELS_PATH / wtp_model_name).is_file():
                 log.info(f"Using downloaded {wtp_model_name} model.")
-                wtp_model_name = os.path.join(WTP_MODELS_PATH, wtp_model_name)
-
+                with importlib.resources.as_file(WTP_MODELS_PATH / wtp_model_name) as path:
+                    self.wtp_model = WtP(str(path))
             elif os.path.exists(os.path.join(DEFAULT_WTP_MODELS,
                                              wtp_model_name)):
 
                 log.info(f"Using downloaded {wtp_model_name} model.")
                 wtp_model_name = os.path.join(DEFAULT_WTP_MODELS,
                                               wtp_model_name)
-
+                self.wtp_model = WtP(wtp_model_name)
             else:
                 log.warning(f"Model {wtp_model_name} not found, "
                              "downloading from hugging face.")
-
-            self.wtp_model =  WtP(wtp_model_name)
+                self.wtp_model =  WtP(wtp_model_name)
 
             if model_setting != "cpu" and model_setting != "cuda":
                 log.warning(f"Invalid setting for WtP runtime {model_setting}. "
