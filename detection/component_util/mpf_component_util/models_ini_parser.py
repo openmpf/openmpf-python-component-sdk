@@ -25,15 +25,26 @@
 #############################################################################
 
 import configparser
+import importlib.resources
 import os
-from typing import Any, Collection, Callable, List, Optional
+from importlib.resources.abc import Traversable
+from pathlib import Path
+from typing import Any, Callable, Collection, List, Optional
 
 import mpf_component_api as mpf
 
 
-class ModelsIniParser(object):
-    def __init__(self, plugin_models_dir: str):
-        self._plugin_models_dir = plugin_models_dir
+class ModelsIniParser:
+    def __init__(self, plugin_models_dir: str | Traversable | Path):
+        match plugin_models_dir:
+            case str():
+                self._plugin_models_dir = plugin_models_dir
+            case Path():
+                self._plugin_models_dir = str(plugin_models_dir)
+            case Traversable():
+                path = importlib.resources.as_file(plugin_models_dir).__enter__()
+                self._plugin_models_dir = str(path)
+
         self._fields: List[_FieldInfo] = []
 
     def register_field(self, name: str, field_type: Callable[[str], Any] = str) -> 'ModelsIniParser':

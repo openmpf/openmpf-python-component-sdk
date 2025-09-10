@@ -51,23 +51,22 @@ Using this API, detection components can be built to provide:
 ## Getting Started
 
 ### Build and Install the Component SDK
-* If not already installed, 
-  [build and install Python 3.8.](https://openmpf.github.io/docs/site/Development-Environment-Guide#python-38)
+* If not already installed,
+  [build and install Python 3.12.](https://openmpf.github.io/docs/site/Development-Environment-Guide#python-312)
 * Install the Python Component API: `pip3 install openmpf-python-component-sdk/detection/api`
 * (Optional) Install the Python Component Utilities: `pip3 install openmpf-python-component-sdk/detection/component_util`
 
 ### Using the Component SDK
 
-Please read the 
-[Python Batch Component API documentation](https://openmpf.github.io/docs/site/Python-Batch-Component-API) 
+Please read the
+[Python Batch Component API documentation](https://openmpf.github.io/docs/site/Python-Batch-Component-API)
 to get started.
 
 ## Project Website
 
-For more information about OpenMPF, including documentation, guides, and other material, visit our 
+For more information about OpenMPF, including documentation, guides, and other material, visit our
 [website](https://openmpf.github.io/).
 
 ## Project Workboard
 
 For a latest snapshot of what tasks are being worked on, what's available to pick up, and where the project stands as a whole, check out our [workboard](https://github.com/orgs/openmpf/projects/11).
-
