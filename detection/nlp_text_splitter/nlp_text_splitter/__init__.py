@@ -29,32 +29,36 @@ import os
 import importlib.resources
 from importlib.resources.abc import Traversable
 
+from enum import Enum
 import spacy
-from wtpsplit import WtP
+import torch
+
+from wtpsplit import WtP, SaT
 from typing import Callable, List, Optional, Tuple
 
 from .wtp_lang_settings import WtpLanguageSettings
 
-import torch
-
+class SplitMode(Enum):
+    DEFAULT = 'DEFAULT'
+    SENTENCE = 'SENTENCE'
 
 DEFAULT_WTP_MODELS = "/opt/wtp/models"
 
 # If we want to package model installation with this utility in the future:
-WTP_MODELS_PATH: Traversable = importlib.resources.files(__name__) / 'models'
+MODELS_PATH: Traversable = importlib.resources.files(__name__) / 'models'
 
 log = logging.getLogger(__name__)
 
 # These models must have an specified language during sentence splitting.
-WTP_MANDATORY_ADAPTOR = ['wtp-canine-s-1l',
-                         'wtp-canine-s-3l',
-                         'wtp-canine-s-6l',
-                         'wtp-canine-s-9l',
-                         'wtp-canine-s-12l']
+WTP_MANDATORY_ADAPTOR = {
+    'wtp-canine-s-1l',
+    'wtp-canine-s-3l',
+    'wtp-canine-s-6l',
+    'wtp-canine-s-9l',
+    'wtp-canine-s-12l',
+}
 
-GPU_AVAILABLE = False
-if torch.cuda.is_available():
-    GPU_AVAILABLE = True
+GPU_AVAILABLE = torch.cuda.is_available()
 
 
 class TextSplitterModel:
@@ -68,68 +72,95 @@ class TextSplitterModel:
         self.split = lambda t, **param: [t]
         self.update_model(model_name, model_setting, default_lang)
 
-    def update_model(self, model_name: str, model_setting: str = "cpu", default_lang: str="en"):
-        if model_name:
-            if "wtp" in model_name:
-                self._update_wtp_model(model_name, model_setting, default_lang)
-                self.split = self._split_wtp
-                log.info(f"Setup WtP model: {model_name}")
-            else:
-                self._update_spacy_model(model_name)
-                self.split = self._split_spacy
-                log.info(f"Setup spaCy model: {model_name}")
+    def update_model(self, model_name: str, model_setting: str = "cpu", default_lang: str = "en"):
+        if not model_name:
+            return
 
-    def _update_wtp_model(self, wtp_model_name: str,
-                          model_setting: str,
-                          default_lang: str) -> None:
+        lower_name = model_name.lower()
+        if lower_name.startswith("wtp"):
+            self._update_wtp_model(model_name, model_setting, default_lang)
+            self.split = self._split_wtp
+            log.info("Setup WtP model: %s", model_name)
+        elif lower_name.startswith("sat"):
+            self._update_sat_model(model_name, model_setting, default_lang)
+            self.split = self._split_sat
+            log.info("Setup SaT model: %s", model_name)
+        else:
+            self._update_spacy_model(model_name)
+            self.split = self._split_spacy
+            log.info("Setup spaCy model: %s", model_name)
 
+    def _resolve_cpu_gpu_device(self, model_setting: str) -> str:
         if model_setting == "gpu" or model_setting == "cuda":
             if GPU_AVAILABLE:
-                model_setting = "cuda"
+                return "cuda"
             else:
                 log.warning("PyTorch determined that CUDA is not available. "
                             "You may need to update the NVIDIA driver for the host system, "
                             "or reinstall PyTorch with GPU support by setting "
                             "ARGS BUILD_TYPE=gpu in the Dockerfile when building this component.")
-                model_setting = "cpu"
-        elif model_setting != "cpu":
-            log.warning("Invalid WtP model setting. Only `cpu` and `cuda` "
+                return "cpu"
+        if model_setting != "cpu":
+            log.warning(
+                "Invalid model setting '%s'. Only `cpu` and `cuda` "
                         "(or `gpu`) WtP model options available at this time. "
-                        "Defaulting to `cpu` mode.")
-            model_setting = "cpu"
+                        "Defaulting to `cpu` mode.", model_setting)
+        return "cpu"
 
-        if wtp_model_name in WTP_MANDATORY_ADAPTOR:
-            self._mandatory_wtp_language = True
-            self._default_lang = default_lang
+    def _find_local_model_path(self, model_name: str) -> Optional[str]:
+        candidate = MODELS_PATH / model_name
+        if candidate.is_file() or candidate.is_dir():
+            with importlib.resources.as_file(candidate) as path:
+                return str(path)
 
-        if self._model_name == wtp_model_name and self._model_setting == model_setting:
-            log.info(f"Using cached model, running on {self._model_setting}: "
-                     f"{self._model_name}")
+        fallback = os.path.join(DEFAULT_WTP_MODELS, model_name)
+        if os.path.exists(fallback):
+            return fallback
+        return None
+
+    def _update_wtp_model(self, wtp_model_name: str,
+                          model_setting: str,
+                          default_lang: str) -> None:
+        device = self._resolve_cpu_gpu_device(model_setting)
+
+        self._model_name = wtp_model_name
+        self._model_setting = device
+        self._default_lang = default_lang
+        self._mandatory_wtp_language = (wtp_model_name in WTP_MANDATORY_ADAPTOR)
+
+        local_path = self._find_local_model_path(wtp_model_name)
+
+        if local_path:
+            log.info("Using downloaded WtP model at %s", local_path)
+            self.wtp_model = WtP(local_path)
         else:
-            self._model_setting = model_setting
-            self._model_name = wtp_model_name
-            # Check if model has been downloaded
-            if (WTP_MODELS_PATH / wtp_model_name).is_file():
-                log.info(f"Using downloaded {wtp_model_name} model.")
-                with importlib.resources.as_file(WTP_MODELS_PATH / wtp_model_name) as path:
-                    self.wtp_model = WtP(str(path))
-            elif os.path.exists(os.path.join(DEFAULT_WTP_MODELS,
-                                             wtp_model_name)):
+            log.warning("WtP model '%s' not found locally; downloading from Hugging Face.", wtp_model_name)
+            self.wtp_model = WtP(wtp_model_name)
+        self.wtp_model.to(device)
 
-                log.info(f"Using downloaded {wtp_model_name} model.")
-                wtp_model_name = os.path.join(DEFAULT_WTP_MODELS,
-                                              wtp_model_name)
-                self.wtp_model = WtP(wtp_model_name)
-            else:
-                log.warning(f"Model {wtp_model_name} not found, "
-                             "downloading from hugging face.")
-                self.wtp_model =  WtP(wtp_model_name)
+    def _update_sat_model(self, sat_model_name: str, model_setting: str, default_lang: str) -> None:
+        device = self._resolve_cpu_gpu_device(model_setting)
 
-            if model_setting != "cpu" and model_setting != "cuda":
-                log.warning(f"Invalid setting for WtP runtime {model_setting}. "
-                             "Defaulting to CPU mode.")
-                model_setting = "cpu"
-            self.wtp_model.to(model_setting)
+        self._model_name = sat_model_name
+        self._model_setting = device
+        self._default_lang = default_lang
+        self._mandatory_wtp_language = (sat_model_name in WTP_MANDATORY_ADAPTOR)
+
+        local_path = self._find_local_model_path(sat_model_name)
+
+        if local_path:
+            log.info("Using downloaded SaT model at %s", local_path)
+            self.sat_model = SaT(local_path)
+        else:
+             log.warning("SaT model '%s' not found locally; downloading from Hugging Face.", sat_model_name)
+            self.sat_model = SaT(sat_model_name)
+
+        # Move model to device; SaT benefits from half precision on GPU.
+        if device == "cuda":
+            self.sat_model.half().to("cuda")
+        else:
+            self.sat_model.to("cpu")
+
 
     def _split_wtp(self, text: str, lang: Optional[str] = None) -> List[str]:
         if lang:
@@ -152,6 +183,10 @@ class TextSplitterModel:
         self.spacy_model = spacy.load(spacy_model_name, exclude=["parser"])
         self.spacy_model.enable_pipe("senter")
 
+    def _split_sat(self, text: str, lang: Optional[str] = None) -> List[str]:
+        # TODO: For now, we'll only use the SaT models that are language agnostic.
+        return self.sat_model.split(text)
+
     def _split_spacy(self, text: str, lang: Optional[str] = None) -> List[str]:
         # TODO: We may add an auto model selection for spaCy in the future.
         # However, the drawback is we will also need to
@@ -165,7 +200,9 @@ class TextSplitter:
         self, text: str, limit: int, num_boundary_chars: int,
         get_text_size: Callable[[str], int],
         sentence_model: TextSplitterModel,
-        in_lang: Optional[str] = None) -> None:
+        in_lang: Optional[str] = None,
+        split_mode: SplitMode = SplitMode.DEFAULT) -> None:
+
         self._sentence_model = sentence_model
         self._limit = limit
         self._num_boundary_chars = num_boundary_chars
@@ -175,6 +212,7 @@ class TextSplitter:
         self._overhead_size = 0
         self._soft_limit = self._limit
         self._in_lang = in_lang
+        self._split_mode = split_mode
 
         if text:
             self.set_text(text)
@@ -218,16 +256,44 @@ class TextSplitter:
     def split(cls,
               text: str, limit: int, num_boundary_chars: int, get_text_size: Callable[[str], int],
               sentence_model: TextSplitterModel,
-              in_lang: Optional[str] = None
-             ):
-        return cls(text, limit, num_boundary_chars, get_text_size, sentence_model, in_lang)._split()
-
+              in_lang: Optional[str] = None,
+              split_mode: SplitMode = SplitMode.DEFAULT,
+    ):
+        return cls(text, limit, num_boundary_chars, get_text_size,
+            sentence_model, in_lang, split_mode)._split()
 
     def _split(self):
+        if self._split_mode == SplitMode.SENTENCE:
+            yield from self._split_sentences_individually()
+        else:
+            yield from self._split_default()
+
+    def _split_default(self):
         if self._text_full_size <= self._limit:
             yield self._text
         else:
             yield from self._split_internal(self._text)
+
+    def _split_sentences_individually(self):
+        """
+        Yield one sentence at a time. If any individual sentence exceeds the limit,
+        reuse the internal chunking logic to subdivide that sentence.
+        """
+        sentences = self._sentence_model.split(self._text, lang=self._in_lang)
+        for sentence in sentences:
+            if self._get_text_size(sentence) <= self._limit:
+                yield sentence
+            else:
+                # Split oversized sentence using the default internal logic.
+                yield from self._split_sentence_text(sentence)
+
+    def _split_sentence_text(self, text: str):
+        saved = (self._text, self._text_full_size, self._overhead_size, self._soft_limit)
+        try:
+            self.set_text(text)
+            yield from self._split_internal(text)
+        finally:
+            self._text, self._text_full_size, self._overhead_size, self._soft_limit = saved
 
     def _split_internal(self, text):
         right = text
@@ -250,9 +316,7 @@ class TextSplitter:
                     left = self._isolate_largest_section(left)
                 return left, text[len(left):]
 
-            char_per_size = len(left) / left_size
-
-
+            char_per_size = len(left) / max(left_size, 1)
             limit = int(self._limit * char_per_size) - self._overhead_size
 
             if limit < 1:

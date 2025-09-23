@@ -27,7 +27,7 @@
 import pathlib
 import unittest
 
-from nlp_text_splitter import TextSplitterModel, TextSplitter
+from nlp_text_splitter import TextSplitterModel, TextSplitter, SplitMode
 
 
 TEST_DATA = pathlib.Path(__file__).parent / 'test_data'
@@ -38,6 +38,35 @@ class TestTextSplitter(unittest.TestCase):
         cls.wtp_model = TextSplitterModel("wtp-bert-mini", "cpu", "en")
         cls.wtp_adv_model = TextSplitterModel("wtp-canine-s-1l", "cpu", "zh")
         cls.spacy_model = TextSplitterModel("xx_sent_ud_sm", "cpu", "en")
+        cls.sat_model = TextSplitterModel("sat-3l-sm", "cpu", "en")
+
+    def test_sat_basic_sentence_split(self):
+        input_text = 'Hello, what is your name? My name is John.'
+        actual = list(TextSplitter.split(input_text,
+        100,
+        100,
+        len,
+        self.sat_model,
+        split_mode=SplitMode.SENTENCE))
+
+        self.assertEqual(2, len(actual))
+        self.assertEqual('Hello, what is your name? ', actual[0])
+        self.assertEqual('My name is John.', actual[1])
+
+    def test_sat_chunk_split(self):
+        input_text = 'Hello, what is your name? My name is John.'
+        actual = list(TextSplitter.split(input_text,
+        28,
+        28,
+        len,
+        self.sat_model,
+        split_mode=SplitMode.DEFAULT))
+
+
+        self.assertEqual(2, len(actual))
+        self.assertEqual('Hello, what is your name? ', actual[0])
+        self.assertEqual('My name is John.', actual[1])
+
 
     def test_split_engine_difference(self):
         # Note: Only WtP's multilingual models
@@ -65,6 +94,14 @@ class TestTextSplitter(unittest.TestCase):
             28,
             len,
             self.wtp_model))
+        self.assertEqual(input_text, ''.join(actual))
+        self.assertEqual(2, len(actual))
+
+        actual = list(TextSplitter.split(input_text,
+            500,
+            500,
+            len,
+            self.sat_model,split_mode=SplitMode.SENTENCE))
         self.assertEqual(input_text, ''.join(actual))
         self.assertEqual(2, len(actual))
 

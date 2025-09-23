@@ -1,7 +1,7 @@
 # Overview
 
 This directory contains the source code, test examples, and installation script
-for the OpenMPF NlpTextSplitter tool, which uses WtP and spaCy libraries
+for the OpenMPF NlpTextSplitter tool, which uses **SaT (Segment any Text)**, **WtP**, and **spaCy**
 to detect sentences in a given chunk of text.
 
 # Background
@@ -10,14 +10,17 @@ Our primary motivation for creating this tool was to find a lightweight, accurat
 sentence detection capability to support a large variety of text processing tasks
 including translation and tagging.
 
-Through preliminary investigation, we identified the [WtP library ("Where's the
-Point")](https://github.com/bminixhofer/wtpsplit) and [spaCy's multilingual sentence
+Through preliminary investigation, we identified the [WtP/SaT library ("Where's the
+Point"/"Segment any Text")](https://github.com/bminixhofer/wtpsplit) and [spaCy's multilingual sentence
 detection model](https://spacy.io/models) for identifying sentence breaks
 in a large section of text.
 
 WtP models are trained to split up multilingual text by sentence without the need of an
 input language tag. The disadvantage is that the most accurate WtP models will need ~3.5
-GB of GPU memory. On the other hand, spaCy has a single multilingual sentence detection
+GB of GPU memory. SaT is the newer successor to WtP from the same authors and
+generally offers better accuracy/efficiency.
+
+On the other hand, spaCy has a single multilingual sentence detection
 that appears to work better for splitting up English text in certain cases. Unfortunately
 this model lacks support handling for Chinese punctuation.
 
@@ -40,12 +43,13 @@ Please note that several customizations are supported:
   setup a PyTorch installation with CUDA (GPU) libraries.
 
 - `--wtp-models-dir |-m <wtp-models-dir >`: Add this parameter to
-  change the default WtP model installation directory
+  change the default WtP/SaT model installation directory
   (default: `/opt/wtp/models`).
 
 - `--install-wtp-model|-w <model-name>`: Add this parameter to specify
-  additional WTP models for installation. This parameter can be provided
-  multiple times to install more than one model.
+  additional WtP/SaT models for installation. Accepts both **WtP** names
+  (e.g., `wtp-bert-mini`) and **SaT** names (e.g., `sat-3l-sm`).
+  This parameter can be provided multiple times to install more than one model.
 
 - `--install-spacy-model|-s <model-name>`: Add this parameter to specify
   additional spaCy models for installation. This parameter can be provided

@@ -107,10 +107,20 @@ download_wtp_models() {
 
     for model_name in "${model_names[@]}"; do
         echo "Downloading the $model_name model to $wtp_models_dir."
-        local wtp_model_dir="$wtp_models_dir/$model_name"
-        python3 -c \
-            "from huggingface_hub import snapshot_download; \
-            snapshot_download('benjamin/$model_name', local_dir='$wtp_model_dir')"
+        local model_dir="$wtp_models_dir/$model_name"
+
+        # Decide which HF org to use based on model prefix.
+        # - WtP: benjamin/<model>
+        # - SaT: segment-any-text/<model>
+        local hf_owner="benjamin"
+        case "$model_name" in
+            sat-*) hf_owner="segment-any-text" ;;
+        esac
+
+        python3 - << PY
+    from huggingface_hub import snapshot_download
+    snapshot_download(repo_id="${hf_owner}/${model_name}", local_dir="${model_dir}")
+PY
     done
 }
 
