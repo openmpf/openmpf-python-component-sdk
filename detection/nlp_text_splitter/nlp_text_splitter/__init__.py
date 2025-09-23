@@ -152,7 +152,7 @@ class TextSplitterModel:
             log.info("Using downloaded SaT model at %s", local_path)
             self.sat_model = SaT(local_path)
         else:
-             log.warning("SaT model '%s' not found locally; downloading from Hugging Face.", sat_model_name)
+            log.warning("SaT model '%s' not found locally; downloading from Hugging Face.", sat_model_name)
             self.sat_model = SaT(sat_model_name)
 
         # Move model to device; SaT benefits from half precision on GPU.

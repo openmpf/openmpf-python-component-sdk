@@ -37,7 +37,7 @@ main() {
     fi
     eval set -- "$options"
     local wtp_models_dir=/opt/wtp/models
-    local wtp_models=("wtp-bert-mini")
+    local wtp_models=("wtp-bert-mini", "sat-3l-sm")
     local spacy_models=("xx_sent_ud_sm")
     while true; do
         case "$1" in
