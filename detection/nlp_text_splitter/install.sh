@@ -117,10 +117,10 @@ download_wtp_models() {
             sat-*) hf_owner="segment-any-text" ;;
         esac
 
-        python3 - << PY
-    from huggingface_hub import snapshot_download
-    snapshot_download(repo_id="${hf_owner}/${model_name}", local_dir="${model_dir}")
-PY
+        python3 -c \
+            "from huggingface_hub import snapshot_download; \
+            snapshot_download(repo_id='${hf_owner}/${model_name}', local_dir='${model_dir}')"
+
     done
 }
 
