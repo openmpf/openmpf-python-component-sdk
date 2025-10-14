@@ -27,7 +27,7 @@
 import pathlib
 import unittest
 
-from nlp_text_splitter import TextSplitterModel, TextSplitter, SplitMode
+from nlp_text_splitter import TextSplitterModel, TextSplitter
 
 
 TEST_DATA = pathlib.Path(__file__).parent / 'test_data'
@@ -47,7 +47,7 @@ class TestTextSplitter(unittest.TestCase):
             100,
             len,
             self.sat_model,
-            split_mode=SplitMode.SENTENCE))
+            split_mode='SENTENCE'))
         self.assertEqual(2, len(actual))
         self.assertEqual('Hello, what is your name? ', actual[0])
         self.assertEqual('My name is John.', actual[1])
@@ -100,7 +100,7 @@ class TestTextSplitter(unittest.TestCase):
             500,
             len,
             self.sat_model,
-            split_mode=SplitMode.SENTENCE))
+            split_mode='SENTENCE'))
         self.assertEqual(input_text, ''.join(actual))
         self.assertEqual(3, len(actual))
 
