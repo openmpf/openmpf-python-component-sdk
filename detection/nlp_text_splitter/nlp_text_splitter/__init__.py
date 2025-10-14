@@ -5,11 +5,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2024 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2025 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2024 The MITRE Corporation                                      #
+# Copyright 2025 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -34,13 +34,10 @@ import spacy
 import torch
 
 from wtpsplit import WtP, SaT
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, List, Optional, Tuple, Union
 
 from .wtp_lang_settings import WtpLanguageSettings
-
-class SplitMode(Enum):
-    DEFAULT = 'DEFAULT'
-    SENTENCE = 'SENTENCE'
+from .newline_behavior import NewLineBehavior, SplitMode
 
 DEFAULT_WTP_MODELS = "/opt/wtp/models"
 
@@ -48,6 +45,7 @@ DEFAULT_WTP_MODELS = "/opt/wtp/models"
 MODELS_PATH: Traversable = importlib.resources.files(__name__) / 'models'
 
 log = logging.getLogger(__name__)
+
 
 # These models must have an specified language during sentence splitting.
 WTP_MANDATORY_ADAPTOR = {
@@ -62,7 +60,7 @@ GPU_AVAILABLE = torch.cuda.is_available()
 
 
 class TextSplitterModel:
-    # To hold spaCy, WtP, and other potential sentence detection models in cache
+    # To hold spaCy, WtP, SaT, and other potential sentence detection models in cache
 
     def __init__(self, model_name: str, model_setting: str, default_lang: str = "en") -> None:
         self._model_name = ""
@@ -80,18 +78,18 @@ class TextSplitterModel:
         if lower_name.startswith("wtp"):
             self._update_wtp_model(model_name, model_setting, default_lang)
             self.split = self._split_wtp
-            log.info("Setup WtP model: %s", model_name)
+            log.info(f"Setup WtP model: {model_name}")
         elif lower_name.startswith("sat"):
             self._update_sat_model(model_name, model_setting, default_lang)
             self.split = self._split_sat
-            log.info("Setup SaT model: %s", model_name)
+            log.info(f"Setup SaT model: {model_name}"
         else:
             self._update_spacy_model(model_name)
             self.split = self._split_spacy
-            log.info("Setup spaCy model: %s", model_name)
+            log.info(f"Setup spaCy model: {model_name}")
 
     def _resolve_cpu_gpu_device(self, model_setting: str) -> str:
-        if model_setting == "gpu" or model_setting == "cuda":
+        if model_setting in ("gpu", "cuda"):
             if GPU_AVAILABLE:
                 return "cuda"
             else:
@@ -102,9 +100,9 @@ class TextSplitterModel:
                 return "cpu"
         if model_setting != "cpu":
             log.warning(
-                "Invalid model setting '%s'. Only `cpu` and `cuda` "
-                        "(or `gpu`) WtP model options available at this time. "
-                        "Defaulting to `cpu` mode.", model_setting)
+                f"Invalid model setting {model_setting}. Only `cpu` and `cuda` "
+                        "(or `gpu`) WtP/SaT model options available at this time. "
+                        "Defaulting to `cpu` mode.")
         return "cpu"
 
     def _find_local_model_path(self, model_name: str) -> Optional[str]:
@@ -131,10 +129,10 @@ class TextSplitterModel:
         local_path = self._find_local_model_path(wtp_model_name)
 
         if local_path:
-            log.info("Using downloaded WtP model at %s", local_path)
+            log.info(f"Using downloaded WtP model at {local_path}")
             self.wtp_model = WtP(local_path)
         else:
-            log.warning("WtP model '%s' not found locally; downloading from Hugging Face.", wtp_model_name)
+            log.warning(f"WtP model {wtp_model_name} not found locally; downloading from Hugging Face.")
             self.wtp_model = WtP(wtp_model_name)
         self.wtp_model.to(device)
 
@@ -149,10 +147,10 @@ class TextSplitterModel:
         local_path = self._find_local_model_path(sat_model_name)
 
         if local_path:
-            log.info("Using downloaded SaT model at %s", local_path)
+            log.info(f"Using downloaded SaT model at {local_path}")
             self.sat_model = SaT(local_path)
         else:
-            log.warning("SaT model '%s' not found locally; downloading from Hugging Face.", sat_model_name)
+            log.warning(f"SaT model {sat_model_name} not found locally; downloading from Hugging Face.")
             self.sat_model = SaT(sat_model_name)
 
         # Move model to device; SaT benefits from half precision on GPU.
@@ -195,32 +193,46 @@ class TextSplitterModel:
         return [sent.text_with_ws for sent in processed_text.sents]
 
 class TextSplitter:
+    NewLineBehaviorType = Union[
+        NewLineBehavior.Behavior,  # 'GUESS' | 'SPACE' | 'REMOVE' | 'NONE' | callable | None
+    ]
 
     def __init__(
         self, text: str, limit: int, num_boundary_chars: int,
         get_text_size: Callable[[str], int],
         sentence_model: TextSplitterModel,
         in_lang: Optional[str] = None,
-        split_mode: SplitMode = SplitMode.DEFAULT) -> None:
+        split_mode: SplitMode = SplitMode.DEFAULT,
+        newline_behavior: NewLineBehaviorType = 'GUESS'
+    ) -> None:
 
         self._sentence_model = sentence_model
         self._limit = limit
         self._num_boundary_chars = num_boundary_chars
         self._get_text_size = get_text_size
+        self._in_lang = in_lang
+        self._split_mode = split_mode
+
+        self._newline_fn: Callable[[str, Optional[str]], str] = NewLineBehavior.get(newline_behavior)
         self._text = ""
         self._text_full_size = 0
         self._overhead_size = 0
         self._soft_limit = self._limit
-        self._in_lang = in_lang
-        self._split_mode = split_mode
 
         if text:
             self.set_text(text)
 
     def set_text(self, text: str):
-        self._text = text
-        self._text_full_size = self._get_text_size(text)
-        chars_per_size = len(text) / self._text_full_size
+
+        if text:
+            self._text = self._newline_fn(text, self._in_lang)
+        else:
+            self._text = text
+
+        self._text_full_size = self._get_text_size(self._text)
+
+        text_size = self._text_full_size if self._text_full_size > 0 else 1
+        chars_per_size = len(self._text) / text_size
         self._overhead_size = self._get_text_size('')
 
         self._soft_limit = int(self._limit * chars_per_size) - self._overhead_size
@@ -232,7 +244,6 @@ class TextSplitter:
             # before applying chars_per_size weighting.
             self._soft_limit = max(1,
                                    int((self._limit - self._overhead_size) * chars_per_size))
-
     def _isolate_largest_section(self, text:str) -> str:
         # Using cached word splitting model, isolate largest section of text
         string_length = len(text)
@@ -247,7 +258,7 @@ class TextSplitter:
         substring_list = self._sentence_model.split(substring, lang = self._in_lang)
         div_index = string_length - len(substring_list[-1])
 
-        if div_index==start_indx:
+        if div_index == start_indx:
             return text
 
         return text[0:div_index]
@@ -258,9 +269,12 @@ class TextSplitter:
               sentence_model: TextSplitterModel,
               in_lang: Optional[str] = None,
               split_mode: SplitMode = SplitMode.DEFAULT,
+              newline_behavior: NewLineBehavior.Behavior = 'GUESS'  # <-- NEW
     ):
-        return cls(text, limit, num_boundary_chars, get_text_size,
-            sentence_model, in_lang, split_mode)._split()
+        return cls(
+            text, limit, num_boundary_chars, get_text_size,
+            sentence_model, in_lang, split_mode, newline_behavior
+        )._split()
 
     def _split(self):
         if self._split_mode == SplitMode.SENTENCE:

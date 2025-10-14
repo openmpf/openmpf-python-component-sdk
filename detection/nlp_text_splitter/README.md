@@ -1,8 +1,8 @@
 # Overview
 
 This directory contains the source code, test examples, and installation script
-for the OpenMPF NlpTextSplitter tool, which uses **SaT (Segment any Text)**, **WtP**, and **spaCy**
-to detect sentences in a given chunk of text.
+for the OpenMPF NlpTextSplitter tool, which uses **SaT (Segment any Text)**,
+**WtP (Where's the Point)**, and **spaCy** to detect sentences in a given chunk of text.
 
 # Background
 
@@ -21,8 +21,37 @@ GB of GPU memory. SaT is the newer successor to WtP from the same authors and
 generally offers better accuracy/efficiency.
 
 On the other hand, spaCy has a single multilingual sentence detection
-that appears to work better for splitting up English text in certain cases. Unfortunately
-this model lacks support handling for Chinese punctuation.
+that appears to work better for splitting up English text in certain cases.
+
+This component has been updated to use the Azure Translation Component's NewLineBehavior class
+for swapping newlines with either whitespace or removing it altogether based on script detected.
+
+The reason why we need to consider the script/character encodings is because certain languages
+will treat whitespace between words as possessing different meanings. For instance in Chinese
+
+`电脑` would mean `computer` but `电 脑` would mean `electricity brain`.
+
+When calling the NLP text splitter, users can adjust the following parameters to control for sentence
+splitting behaviors:
+
+- `split_mode`: set to `DEFAULT` for splitting by chunk size and `SENTENCE` when splitting by sentences
+
+- `newline_behavior` : controls how newlines are handled in a submitted input text. Options include:
+  - `GUESS`  to choose ' ' for space-separated langs; '' for Chinese/Japanese/Korean.
+  - `SPACE`  to always replace with a single space.
+  - `REMOVE` to always remove (no space).
+  - `NONE`   to no change.
+
+For instance:
+```
+    result = list(TextSplitter.split(input_text,
+                  ...
+                  self.sat_model,
+                  split_mode='DEFAULT')
+                  newline_behavior='NONE')
+```
+Will attempt to split using an SaT model, using the default chunking parameters and no newline adjustments.
+
 
 # Installation
 
@@ -47,8 +76,8 @@ Please note that several customizations are supported:
   (default: `/opt/wtp/models`).
 
 - `--install-wtp-model|-w <model-name>`: Add this parameter to specify
-  additional WtP/SaT models for installation. Accepts both **WtP** names
-  (e.g., `wtp-bert-mini`) and **SaT** names (e.g., `sat-3l-sm`).
+  additional WtP/SaT models for installation. Accepts both WtP names
+  (e.g., `wtp-bert-mini`) and SaT names (e.g., `sat-3l-sm`).
   This parameter can be provided multiple times to install more than one model.
 
 - `--install-spacy-model|-s <model-name>`: Add this parameter to specify

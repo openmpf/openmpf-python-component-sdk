@@ -5,11 +5,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2024 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2025 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2024 The MITRE Corporation                                      #
+# Copyright 2025 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -43,29 +43,15 @@ class TestTextSplitter(unittest.TestCase):
     def test_sat_basic_sentence_split(self):
         input_text = 'Hello, what is your name? My name is John.'
         actual = list(TextSplitter.split(input_text,
-        100,
-        100,
-        len,
-        self.sat_model,
-        split_mode=SplitMode.SENTENCE))
-
+            100,
+            100,
+            len,
+            self.sat_model,
+            split_mode=SplitMode.SENTENCE))
         self.assertEqual(2, len(actual))
         self.assertEqual('Hello, what is your name? ', actual[0])
         self.assertEqual('My name is John.', actual[1])
 
-    def test_sat_chunk_split(self):
-        input_text = 'Hello, what is your name? My name is John.'
-        actual = list(TextSplitter.split(input_text,
-        28,
-        28,
-        len,
-        self.sat_model,
-        split_mode=SplitMode.DEFAULT))
-
-
-        self.assertEqual(2, len(actual))
-        self.assertEqual('Hello, what is your name? ', actual[0])
-        self.assertEqual('My name is John.', actual[1])
 
 
     def test_split_engine_difference(self):
@@ -87,8 +73,14 @@ class TestTextSplitter(unittest.TestCase):
         actual = self.wtp_model._split_wtp(text)
         self.assertEqual(10, len(actual))
 
+        # SaT seems to try to split using additional features, in addition to newlines.
+        actual = self.sat_model._split_sat(text)
+        self.assertEqual(19, len(actual))
+
     def test_guess_split_simple_sentence(self):
-        input_text = 'Hello, what is your name? My name is John.'
+        input_text = 'Hello, what is your name? My name is John. C. Finn.'
+
+        # WtP Produces a clean split.
         actual = list(TextSplitter.split(input_text,
             28,
             28,
@@ -97,20 +89,27 @@ class TestTextSplitter(unittest.TestCase):
         self.assertEqual(input_text, ''.join(actual))
         self.assertEqual(2, len(actual))
 
+        # "Hello, what is your name?"
+        self.assertEqual('Hello, what is your name? ', actual[0])
+        # " My name is John."
+        self.assertEqual('My name is John. C. Finn.', actual[1])
+
+        # Seems SaT is a bit more aggressive at splitting text.
         actual = list(TextSplitter.split(input_text,
             500,
             500,
             len,
-            self.sat_model,split_mode=SplitMode.SENTENCE))
+            self.sat_model,
+            split_mode=SplitMode.SENTENCE))
         self.assertEqual(input_text, ''.join(actual))
-        self.assertEqual(2, len(actual))
+        self.assertEqual(3, len(actual))
 
         # "Hello, what is your name?"
         self.assertEqual('Hello, what is your name? ', actual[0])
         # " My name is John."
-        self.assertEqual('My name is John.', actual[1])
+        self.assertEqual('My name is John. ', actual[1])
+        self.assertEqual('C. Finn.', actual[2])
 
-        input_text = 'Hello, what is your name? My name is John.'
         actual = list(TextSplitter.split(input_text,
             28,
             28,
@@ -122,7 +121,7 @@ class TestTextSplitter(unittest.TestCase):
         # "Hello, what is your name?"
         self.assertEqual('Hello, what is your name? ', actual[0])
         # " My name is John."
-        self.assertEqual('My name is John.', actual[1])
+        self.assertEqual('My name is John. C. Finn.', actual[1])
 
     def test_split_sentence_end_punctuation(self):
         input_text = 'Hello. How are you? asdfasdf'
@@ -161,7 +160,8 @@ class TestTextSplitter(unittest.TestCase):
             30,
             30,
             len,
-            self.wtp_model))
+            self.wtp_model,
+            newline_behavior = "NONE"))
 
         self.assertEqual(input_text, ''.join(actual))
         self.assertEqual(4, len(actual))
@@ -172,11 +172,30 @@ class TestTextSplitter(unittest.TestCase):
         self.assertEqual("Maybe...maybe not? \n ", actual[2])
         self.assertEqual("All done, I think!", actual[3])
 
+        # Split using WtP model.
+        actual = list(TextSplitter.split(input_text,
+            30,
+            30,
+            len,
+            self.wtp_model,
+            newline_behavior = "GUESS"))
+
+        self.assertEqual(input_text.replace('\n',''), ''.join(actual))
+        self.assertEqual(4, len(actual))
+
+        # WtP should detect and split out each sentence
+        self.assertEqual("This is a sentence (Dr.Test). ", actual[0])
+        self.assertEqual("Is this, a sentence as well? ", actual[1])
+        self.assertEqual("Maybe...maybe not?  ", actual[2])
+        self.assertEqual("All done, I think!", actual[3])
+
+
         actual = list(TextSplitter.split(input_text,
             35,
             35,
             len,
-            self.spacy_model))
+            self.spacy_model,
+            newline_behavior = "NONE"))
         self.assertEqual(input_text, ''.join(actual))
         self.assertEqual(4, len(actual))
 

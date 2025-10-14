@@ -7,11 +7,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2024 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2025 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2024 The MITRE Corporation                                      #
+# Copyright 2025 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -159,12 +159,12 @@ Options
     --text-splitter-dir, -t <path>:    Path to text splitter source code. (defaults to to the
                                        same directory as this script)
     --gpu, -g:                         Install the GPU version of PyTorch
-    --wtp-models-dir , -m <path>:      Path where WTP models will be stored.
+    --wtp-models-dir , -m <path>:      Path where WtP/SaT models will be stored.
                                        (defaults to /opt/wtp/models)
-    --install-wtp-model, -w <name>:    Name of a WTP model to install in addtion to wtp-bert-mini.
+    --install-wtp-model, -w <name>:    Name of a WTP or SaT model to install in addition to 'wtp-bert-mini' and 'sat-3l-sm.
                                        This option can be provided more than once to specify
                                        multiple models.
-    --install-spacy-model | -s <name>: Names of a spaCy model to install in addtion to
+    --install-spacy-model | -s <name>: Names of a spaCy model to install in addition to
                                        xx_sent_ud_sm. The option can be provided more than once
                                        to specify multiple models.
 "
