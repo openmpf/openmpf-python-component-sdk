@@ -82,7 +82,7 @@ class TextSplitterModel:
         elif lower_name.startswith("sat"):
             self._update_sat_model(model_name, model_setting, default_lang)
             self.split = self._split_sat
-            log.info(f"Setup SaT model: {model_name}"
+            log.info(f"Setup SaT model: {model_name}")
         else:
             self._update_spacy_model(model_name)
             self.split = self._split_spacy
