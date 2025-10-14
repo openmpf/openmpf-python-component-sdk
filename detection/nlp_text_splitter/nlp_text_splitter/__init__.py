@@ -29,7 +29,6 @@ import os
 import importlib.resources
 from importlib.resources.abc import Traversable
 
-from enum import Enum
 import spacy
 import torch
 
@@ -37,7 +36,7 @@ from wtpsplit import WtP, SaT
 from typing import Callable, List, Optional, Tuple, Union
 
 from .wtp_lang_settings import WtpLanguageSettings
-from .newline_behavior import NewLineBehavior, SplitMode
+from .newline_behavior import NewLineBehavior
 
 DEFAULT_WTP_MODELS = "/opt/wtp/models"
 
@@ -202,7 +201,7 @@ class TextSplitter:
         get_text_size: Callable[[str], int],
         sentence_model: TextSplitterModel,
         in_lang: Optional[str] = None,
-        split_mode: SplitMode = SplitMode.DEFAULT,
+        split_mode: str = 'DEFAULT',
         newline_behavior: NewLineBehaviorType = 'GUESS'
     ) -> None:
 
@@ -268,8 +267,8 @@ class TextSplitter:
               text: str, limit: int, num_boundary_chars: int, get_text_size: Callable[[str], int],
               sentence_model: TextSplitterModel,
               in_lang: Optional[str] = None,
-              split_mode: SplitMode = SplitMode.DEFAULT,
-              newline_behavior: NewLineBehavior.Behavior = 'GUESS'  # <-- NEW
+              split_mode: str = 'DEFAULT',
+              newline_behavior: NewLineBehavior.Behavior = 'GUESS'
     ):
         return cls(
             text, limit, num_boundary_chars, get_text_size,
@@ -277,7 +276,7 @@ class TextSplitter:
         )._split()
 
     def _split(self):
-        if self._split_mode == SplitMode.SENTENCE:
+        if self._split_mode == 'SENTENCE':
             yield from self._split_sentences_individually()
         else:
             yield from self._split_default()

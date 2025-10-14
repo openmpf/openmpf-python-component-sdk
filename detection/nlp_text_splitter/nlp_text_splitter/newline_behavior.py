@@ -35,10 +35,6 @@ import mpf_component_api as mpf
 # Languages that typically do NOT use spaces between words
 NO_SPACE_LANGS = ('JA', 'YUE', 'ZH-HANS', 'ZH-HANT')
 
-class SplitMode(Enum):
-    DEFAULT = 'DEFAULT'
-    SENTENCE = 'SENTENCE'
-
 class ChineseAndJapaneseCodePoints:
     # From http://www.unicode.org/charts/
     RANGES = sorted((
