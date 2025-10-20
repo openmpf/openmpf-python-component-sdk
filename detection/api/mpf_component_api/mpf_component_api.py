@@ -80,7 +80,7 @@ class AllVideoTracksJob(NamedTuple):
     stop_frame: int
     job_properties: Mapping[str, str]
     media_properties: Mapping[str, str]
-    feed_forward_tracks: Optional[List[VideoTrack]] = None
+    feed_forward_tracks: List[VideoTrack]
 
 
 class ImageJob(NamedTuple):
