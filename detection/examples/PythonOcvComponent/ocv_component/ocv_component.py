@@ -41,14 +41,13 @@ class OcvComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
             image_job: mpf.ImageJob,
             image_reader: mpf_util.ImageReader) -> Iterable[mpf.ImageLocation]:
 
-        logger.info('[%s] Received image job: %s', image_job.job_name, image_job)
+        logger.info('Received image job: %s', image_job)
         model = get_model(image_job)  # A real component would use the model.
 
         img = image_reader.get_image()
 
         height, width, _ = img.shape
-        logger.info('[%s] Image at %s: width = %s, height = %s',
-                    image_job.job_name, image_job.data_uri, width, height)
+        logger.info('Image at %s: width = %s, height = %s', image_job.data_uri, width, height)
 
         detection_sz = 20
         yield mpf.ImageLocation(width // 2 - detection_sz, 0, detection_sz, height - 1, -1.0,
@@ -62,7 +61,7 @@ class OcvComponent(mpf_util.ImageReaderMixin, mpf_util.VideoCaptureMixin):
             self,
             video_job: mpf.VideoJob,
             video_capture: mpf_util.VideoCapture) -> Iterable[mpf.VideoTrack]:
-        logger.info('[%s] Received video job: %s', video_job.job_name, video_job)
+        logger.info('Received video job: %s', video_job)
         model = get_model(video_job)  # A real component would use the model.
 
         width, height = video_capture.frame_size
@@ -96,9 +95,9 @@ def get_model(job):
     models_dir_path = os.path.join(job.job_properties.get('MODELS_DIR_PATH', '.'),
                                    'PythonOcvComponent')
     model_settings = ModelSettings(model_name, models_dir_path)
-    logger.info('[%s] Successfully retrieved settings file for the "%s" model: '
+    logger.info('Successfully retrieved settings file for the "%s" model: '
                 '{ network = "%s", names = "%s", num_classes = %s }',
-                job.job_name, model_name, model_settings.network, model_settings.names, model_settings.num_classes)
+                model_name, model_settings.network, model_settings.names, model_settings.num_classes)
     return load_model(model_settings)
 
 

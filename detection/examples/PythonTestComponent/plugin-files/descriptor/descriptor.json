@@ -3,7 +3,7 @@
   "componentVersion": "9.0",
   "middlewareVersion": "9.0",
   "sourceLanguage": "python",
-  "batchLibrary": "${MPF_HOME}/plugins/PythonTestComponent/test_component.py",
+  "batchLibrary": "PythonTestComponent",
   "environmentVariables": [],
   "algorithm": {
     "name": "PYTHONTEST",
