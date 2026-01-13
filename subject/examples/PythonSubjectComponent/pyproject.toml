@@ -30,7 +30,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "PythonSubjectComponent"
-version = "9.0"
+version = "10.0"
 
 [project.entry-points."mpf.exported_component"]
 component = "subject_component:SubjectExampleComponent"
