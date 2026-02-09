@@ -38,6 +38,14 @@ import mpf_component_util as mpf_util
 from mpf_component_util.frame_filters import FeedForwardFrameFilter, IntervalFrameFilter, seek_strategies
 
 
+CV_VERSION = tuple(map(int, cv2.__version__.split('.')))
+
+def skip_if_new_ocv_version(func):
+    if CV_VERSION >= (4, 13, 0):
+        return unittest.skip('Test is not needed after opencv-python 4.13.0.')(func)
+    else:
+        return func
+
 
 class FrameFilterTest(unittest.TestCase):
     def test_calculate_segment_frame_count(self):
@@ -498,7 +506,12 @@ class FrameFilterTest(unittest.TestCase):
         self.assertEqual(expected_size.height, frame.shape[0])
 
 
+    @skip_if_new_ocv_version
     def test_cv_video_capture_get_frame_position_issue(self):
+        # The issue described below was fixed in opencv-python version 4.13, but has not been fixed
+        # in the C++ version of OpenCV. After the corresponding tests in the C++ SDK also fail
+        # both the Python and C++ SDKs should be updated at the same time.
+
         # This test demonstrates the issue that led us to keep track of frame position in mpf_util.VideoCapture
         # instead of depending on cv2.VideoCapture.
         # This test may fail in a future version of OpenCV. If this test fails,
@@ -530,7 +543,12 @@ class FrameFilterTest(unittest.TestCase):
         self.assertEqual(11, frame_position)
 
 
+    @skip_if_new_ocv_version
     def test_cv_video_capture_set_frame_position_issue(self):
+        # The issue described below was fixed in opencv-python version 4.13, but has not been fixed
+        # in the C++ version of OpenCV. After the corresponding tests in the C++ SDK also fail
+        # both the Python and C++ SDKs should be updated at the same time.
+
         # This test demonstrates the issue that led us to implement SeekStrategy with fall-backs instead of just
         # using cv2.VideoCapture.set(cv2.CAP_PROP_POS_FRAMES, int).
         # This test may fail in a future version of OpenCV. If this test fails, then mpf_util.VideoCapture no longer
@@ -545,7 +563,10 @@ class FrameFilterTest(unittest.TestCase):
         self.assertFalse(was_read, 'If this test fails, then a bug with OpenCV has been fixed. See test for details')
 
 
+    @skip_if_new_ocv_version
     def test_vfr_handling(self):
+        # When the C++ version of this test fails, both the Python and C++ SDKs should be updated
+        # at the same time.
         target_frame = 40
         vfr_cap = mpf_util.VideoCapture(mpf.VideoJob(
             'Test', VIDEO_WITH_SET_FRAME_ISSUE, target_frame, 82, {}, {}))
