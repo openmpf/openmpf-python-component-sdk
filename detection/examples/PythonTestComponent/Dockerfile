@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.2
+
 #############################################################################
 # NOTICE                                                                    #
 #                                                                           #
@@ -24,10 +26,9 @@
 # limitations under the License.                                            #
 #############################################################################
 
-[metadata]
-name = mpf_component_api
-version = 10.0
-description = OpenMPF Python Component API
+ARG BUILD_REGISTRY
+ARG BUILD_TAG=latest
+FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
 
-[options]
-packages = mpf_component_api
+RUN --mount=target=.,readwrite \
+    install-component.sh

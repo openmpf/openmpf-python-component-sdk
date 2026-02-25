@@ -24,10 +24,4 @@
 # limitations under the License.                                            #
 #############################################################################
 
-[metadata]
-name = mpf_component_api
-version = 10.0
-description = OpenMPF Python Component API
-
-[options]
-packages = mpf_component_api
+from .test_component import TestComponent
