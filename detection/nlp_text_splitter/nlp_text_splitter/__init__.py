@@ -31,6 +31,8 @@ from importlib.resources.abc import Traversable
 
 import spacy
 import torch
+import re
+import bisect
 
 from wtpsplit import WtP, SaT
 from typing import Callable, List, Optional, Tuple, Union
@@ -44,6 +46,8 @@ DEFAULT_WTP_MODELS = "/opt/wtp/models"
 MODELS_PATH: Traversable = importlib.resources.files(__name__) / 'models'
 
 log = logging.getLogger(__name__)
+
+_LAST_WS_RE = re.compile(r"\s(?=\S*$)")
 
 
 # These models must have an specified language during sentence splitting.
@@ -202,7 +206,8 @@ class TextSplitter:
         sentence_model: TextSplitterModel,
         in_lang: Optional[str] = None,
         split_mode: str = 'DEFAULT',
-        newline_behavior: NewLineBehaviorType = 'GUESS'
+        newline_behavior: NewLineBehaviorType = 'GUESS',
+        preferred_limit: int = -1
     ) -> None:
 
         self._sentence_model = sentence_model
@@ -217,6 +222,12 @@ class TextSplitter:
         self._text_full_size = 0
         self._overhead_size = 0
         self._soft_limit = self._limit
+
+        if preferred_limit > 0:
+            self._preferred_limit = min(preferred_limit, limit)
+        else:
+            self._preferred_limit = limit
+
 
         if text:
             self.set_text(text)
@@ -254,8 +265,13 @@ class TextSplitter:
 
         start_indx = max(0, string_length - num_chars_to_process)
         substring = text[start_indx: string_length]
-        substring_list = self._sentence_model.split(substring, lang = self._in_lang)
-        div_index = string_length - len(substring_list[-1])
+        substring_list = self._sentence_model.split(substring, lang=self._in_lang)
+        if not substring_list:
+            return text
+        last = substring_list[-1]
+        if not last:
+            return text
+        div_index = string_length - len(last)
 
         if div_index == start_indx:
             return text
@@ -268,11 +284,13 @@ class TextSplitter:
               sentence_model: TextSplitterModel,
               in_lang: Optional[str] = None,
               split_mode: str = 'DEFAULT',
-              newline_behavior: NewLineBehavior.Behavior = 'GUESS'
+              newline_behavior: NewLineBehavior.Behavior = 'GUESS',
+              preferred_limit: int = -1
     ):
         return cls(
             text, limit, num_boundary_chars, get_text_size,
-            sentence_model, in_lang, split_mode, newline_behavior
+            sentence_model, in_lang, split_mode, newline_behavior,
+            preferred_limit
         )._split()
 
     def _split(self):
@@ -282,7 +300,9 @@ class TextSplitter:
             yield from self._split_default()
 
     def _split_default(self):
-        if self._text_full_size <= self._limit:
+        effective_limit = min(self._preferred_limit, self._limit)
+
+        if self._text_full_size <= effective_limit:
             yield self._text
         else:
             yield from self._split_internal(self._text)
@@ -301,12 +321,22 @@ class TextSplitter:
                 yield from self._split_sentence_text(sentence)
 
     def _split_sentence_text(self, text: str):
-        saved = (self._text, self._text_full_size, self._overhead_size, self._soft_limit)
+        saved = (
+            self._text,
+            self._text_full_size,
+            self._overhead_size,
+            self._soft_limit
+        )
         try:
             self.set_text(text)
             yield from self._split_internal(text)
         finally:
-            self._text, self._text_full_size, self._overhead_size, self._soft_limit = saved
+            (
+                self._text,
+                self._text_full_size,
+                self._overhead_size,
+                self._soft_limit
+            ) = saved
 
     def _split_internal(self, text):
         right = text
@@ -317,24 +347,83 @@ class TextSplitter:
                 return
 
     def _divide(self, text) -> Tuple[str, str]:
-        limit = self._soft_limit
-        while True:
-            left = text[:limit]
-            left_size = self._get_text_size(left)
+        max_limit = self._limit
+        soft_limit = self._soft_limit
+        preferred_enabled = (self._preferred_limit < self._limit)
 
-            if left_size <= self._limit:
-                if left != text:
-                    # If dividing into two parts
-                    # Determine soft boundary for left segment
-                    left = self._isolate_largest_section(left)
+        # Always start with the existing max/guess
+        limit = soft_limit
+
+        while True:
+            left_window = text[:limit]
+            left_size = self._get_text_size(left_window)
+
+            if left_size <= max_limit:
+                # If preferred is enabled and this remainder is still larger than preferred,
+                # split even if left_window == text.
+                prefer_split = preferred_enabled and (left_size > self._preferred_limit)
+
+                # If not using preferred logic, preserve original behavior:
+                if not prefer_split:
+                    if left_window != text:
+                        left = self._isolate_largest_section(left_window)
+                    else:
+                        left = left_window
+                else:
+                    sents = self._sentence_model.split(left_window, lang=self._in_lang) or []
+
+                    break_pts = []
+                    cumulative_count = 0
+                    for s in sents:
+                        if not s:
+                            continue
+                        cumulative_count += len(s)
+                        break_pts.append(cumulative_count)
+
+                    # If left_window == text and we need to split, don't allow choosing full length.
+                    local_chars_per_token = len(left_window) / max(left_size, 1)
+                    local_target = int(self._preferred_limit * local_chars_per_token) - self._overhead_size
+
+                    desired_max = len(left_window) - 1 if len(left_window) > 1 else 1
+                    target = max(1, min(desired_max, local_target))
+
+                    chosen = None
+                    if break_pts:
+                        i = bisect.bisect_left(break_pts, target)
+                        candidates = []
+                        if i > 0:
+                            candidates.append(break_pts[i - 1])
+                        if i < len(break_pts):
+                            candidates.append(break_pts[i])
+
+                        if candidates:
+                            chosen = min(
+                                candidates,
+                                key=lambda p: (abs(p - target), p < target)
+                            )
+
+                    if not chosen or chosen <= 0 or chosen >= len(left_window):
+                        chosen = target
+
+                    left = left_window[:chosen]
+
+                cut = len(left)
+                if 0 < cut < len(text) and text[cut - 1].isalnum() and text[cut].isalnum():
+                    m = _LAST_WS_RE.search(left)
+                    if m:
+                        left = left[:m.end()]
+
+                # Worst-case, but extremely unlikely to happen.
+                if left == "" and text != "":
+                    left = text[:1]
+
                 return left, text[len(left):]
 
-            char_per_size = len(left) / max(left_size, 1)
-            limit = int(self._limit * char_per_size) - self._overhead_size
-
+            char_per_size = len(left_window) / max(left_size, 1)
+            limit = int(max_limit * char_per_size) - self._overhead_size
             if limit < 1:
-            # Caused by an unusually large overhead relative to text.
-            # This is unlikely to occur except during testing of small text limits.
-            # Recalculate soft limit by subtracting overhead from limit before
-            # applying chars_per_size weighting.
-                limit = max(1, int((self._limit - self._overhead_size) * char_per_size))
+                # Caused by an unusually large overhead relative to text.
+                # This is unlikely to occur except during testing of small text limits.
+                # Recalculate soft limit by subtracting overhead from limit before
+                # applying chars_per_size weighting.
+                limit = max(1, int((max_limit - self._overhead_size) * char_per_size))

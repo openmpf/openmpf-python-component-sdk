@@ -77,9 +77,28 @@ Please note that several customizations are supported:
 
 - `--install-wtp-model|-w <model-name>`: Add this parameter to specify
   additional WtP/SaT models for installation. Accepts both WtP names
-  (e.g., `wtp-bert-mini`) and SaT names (e.g., `sat-3l-sm`).
+  (e.g., `wtp-bert-mini`) and SaT names (e.g., `sat-6l-sm`).
   This parameter can be provided multiple times to install more than one model.
 
 - `--install-spacy-model|-s <model-name>`: Add this parameter to specify
   additional spaCy models for installation. This parameter can be provided
   multiple times to install more than one model.
+
+
+# Optimal WtP / SaT model:
+
+Based on testing, `sat-6l-sm` emerges as the recommended model, particularly when accuracy is prioritized and GPU resources (~1 GB) are available
+
+| Metric                   | sat-3l-sm       | sat-6l-sm       | Difference               |
+|--------------------------|-----------------|-----------------|--------------------------|
+| **Accuracy (%)**         | 97.6%           | **98.8%**       | +1.2%                    |
+| **GPU Memory Used (MB)** | **1083.8**      | 1125.8          | +42 MB (~4% increase)    |
+| **GPU Processing Time (s)**  | **2.81**    | 3.00            | +0.19 s                  |
+| **CPU Processing Time (s)**  | **6.57**    | 11.72           | **+5.15 s (significant)**|
+
+Key Considerations:
+- `sat-3l-sm` is slightly less accurate but runs at x2 speedup in CPU compared to `sat-6l-sm`
+- While running on GPU: Both models use roughly the same amount of GPU resource/runtime.
+- This means that it's generally advantageous to use `sat-6l-sm` when GPU is available, and to fall back to `sat-3l-sm` if only CPU resources are available.
+
+For detailed results and additional models, see [WtP SaT Text Splitter Analysis](WtP%20SaT%20Text%20Splitter%20Analysis.xlsx).
