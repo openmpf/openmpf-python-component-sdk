@@ -346,6 +346,44 @@ class TextSplitter:
             if not right:
                 return
 
+
+    def _compute_breakpoints_from_sentences(self, text: str, pieces: List[str]) -> List[int]:
+        """
+        Align sentence pieces back onto `text` to produce true breakpoint indices.
+        This avoids drift when the sentence model trims/normalizes whitespace.
+        Returns indices `bp` such that `text[:bp]` ends at a real sentence boundary.
+        """
+        break_pts: List[int] = []
+        pos = 0
+
+        for s in pieces:
+            if not s:
+                continue
+
+            # Try exact match first
+            idx = text.find(s, pos)
+
+            if idx == -1:
+                # Common issue: text models trim surrounding whitespace; try stripped piece
+                s2 = s.strip()
+                if not s2:
+                    continue
+                idx = text.find(s2, pos)
+                if idx == -1:
+                    # Could not align; stop and use whatever we have so far.
+                    # (Better to have partial breakpoints than wrong ones.)
+                    log.debug("Sentence alignment failed; using partial breakpoints.")
+                    return break_pts
+                s = s2
+
+            end = idx + len(s)
+            if 0 < end <= len(text):
+                break_pts.append(end)
+            pos = end
+
+        # Ensure sorted unique breakpoints
+        return sorted(set(break_pts))
+
     def _divide(self, text) -> Tuple[str, str]:
         max_limit = self._limit
         soft_limit = self._soft_limit
@@ -372,13 +410,7 @@ class TextSplitter:
                 else:
                     sents = self._sentence_model.split(left_window, lang=self._in_lang) or []
 
-                    break_pts = []
-                    cumulative_count = 0
-                    for s in sents:
-                        if not s:
-                            continue
-                        cumulative_count += len(s)
-                        break_pts.append(cumulative_count)
+                    break_pts = self._compute_breakpoints_from_sentences(left_window, sents)
 
                     # If left_window == text and we need to split, don't allow choosing full length.
                     if left_window == text:
@@ -390,26 +422,20 @@ class TextSplitter:
                     local_target = int(self._preferred_limit * local_chars_per_token) - self._overhead_size
                     target = max(1, min(desired_max, local_target))
 
-                    chosen = None
+                    # Always end on a breakpoint if any exist.
+                    chosen: Optional[int] = None
                     if break_pts:
+                        # Prefer the first breakpoint at/after target (slightly over is fine).
                         i = bisect.bisect_left(break_pts, target)
-                        candidates = []
-                        if i > 0:
-                            candidates.append(break_pts[i - 1])
                         if i < len(break_pts):
-                            candidates.append(break_pts[i])
-
-                        if candidates:
-                            over_target = [p for p in candidates if p >= target]
-                            if over_target:
-                                chosen = min(over_target, key=lambda p: p - target)
-                            else:
-                                chosen = max(candidates)
+                            chosen = break_pts[i]
                         else:
-                            chosen = target
+                            chosen = break_pts[-1]
+                    else:
+                        chosen = target
 
-                    # Fallback rules:
-                    if not chosen or chosen <= 0:
+                    # Fallback:
+                    if chosen is None or chosen <= 0:
                         chosen = target
                     elif left_window == text and chosen >= len(left_window):
                         chosen = target
