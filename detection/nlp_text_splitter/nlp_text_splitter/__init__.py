@@ -381,10 +381,13 @@ class TextSplitter:
                         break_pts.append(cumulative_count)
 
                     # If left_window == text and we need to split, don't allow choosing full length.
+                    if left_window == text:
+                        desired_max = len(left_window) - 1 if len(left_window) > 1 else 1
+                    else:
+                        desired_max = len(left_window)
+
                     local_chars_per_token = len(left_window) / max(left_size, 1)
                     local_target = int(self._preferred_limit * local_chars_per_token) - self._overhead_size
-
-                    desired_max = len(left_window) - 1 if len(left_window) > 1 else 1
                     target = max(1, min(desired_max, local_target))
 
                     chosen = None
@@ -397,12 +400,18 @@ class TextSplitter:
                             candidates.append(break_pts[i])
 
                         if candidates:
-                            chosen = min(
-                                candidates,
-                                key=lambda p: (abs(p - target), p < target)
-                            )
+                            over_target = [p for p in candidates if p >= target]
+                            if over_target:
+                                chosen = min(over_target, key=lambda p: p - target)
+                            else:
+                                chosen = max(candidates)
+                        else:
+                            chosen = target
 
-                    if not chosen or chosen <= 0 or chosen >= len(left_window):
+                    # Fallback rules:
+                    if not chosen or chosen <= 0:
+                        chosen = target
+                    elif left_window == text and chosen >= len(left_window):
                         chosen = target
 
                     left = left_window[:chosen]
