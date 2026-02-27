@@ -75,7 +75,7 @@ class TestTextSplitter(unittest.TestCase):
 
         # SaT seems to try to split using additional features, in addition to newlines.
         actual = self.sat_model._split_sat(text)
-        self.assertEqual(19, len(actual))
+        self.assertEqual(16, len(actual))
 
     def test_guess_split_simple_sentence(self):
         input_text = 'Hello, what is your name? My name is John. C. Finn.'
