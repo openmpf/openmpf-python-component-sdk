@@ -24,13 +24,24 @@
 # limitations under the License.                                            #
 #############################################################################
 
+import sys
+
+try:
+    from wtpsplit import WtP
+except ModuleNotFoundError as e:
+    if e.name == 'torchvision' and 'transformers' in sys.modules:
+        e.add_note(
+            'To avoid the dependency on "torchvision", the "wtpsplit" module must be '
+            'imported before the "transformers" module.')
+    raise
+
+
 import logging
 import os
 import importlib.resources
 from importlib.resources.abc import Traversable
 
 import spacy
-from wtpsplit import WtP
 from typing import Callable, List, Optional, Tuple
 
 from .wtp_lang_settings import WtpLanguageSettings
