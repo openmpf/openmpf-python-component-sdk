@@ -100,6 +100,14 @@ class AudioJob(NamedTuple):
     media_properties: Mapping[str, str]
     feed_forward_track: Optional[AudioTrack] = None
 
+class AllAudioTracksJob(NamedTuple):
+    job_name: str
+    data_uri: str
+    start_time: int
+    stop_time: int
+    job_properties: Mapping[str, str]
+    media_properties: Mapping[str, str]
+    feed_forward_tracks: List[AudioTrack]
 
 class GenericJob(NamedTuple):
     job_name: str
