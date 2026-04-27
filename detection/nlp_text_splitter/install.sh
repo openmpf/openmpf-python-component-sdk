@@ -96,6 +96,7 @@ install_py_torch() {
         echo "Installing CPU only version of PyTorch."
         pip3 install "$torch_package" --index-url https://download.pytorch.org/whl/cpu
     fi
+    pip3 install torchvision~=0.18
 }
 
 
