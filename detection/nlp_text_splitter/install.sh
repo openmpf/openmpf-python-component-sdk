@@ -88,7 +88,7 @@ install_text_splitter() {
 
 install_py_torch() {
     local gpu_enabled=$1
-    local torch_package='torch~=2.3'
+    local torch_package='torch~=2.3 torchvision~=0.18'
     if [[ $gpu_enabled ]]; then
         echo "Installing GPU enabled PyTorch."
         pip3 install "$torch_package"
@@ -96,7 +96,6 @@ install_py_torch() {
         echo "Installing CPU only version of PyTorch."
         pip3 install "$torch_package" --index-url https://download.pytorch.org/whl/cpu
     fi
-    pip3 install torchvision~=0.18
 }
 
 
