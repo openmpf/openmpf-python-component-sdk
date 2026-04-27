@@ -41,6 +41,15 @@ splitting behaviors:
   - `SPACE`  to always replace with a single space.
   - `REMOVE` to always remove (no space).
   - `NONE`   to no change.
+  By default, the newline behavior will attempt to guess whether to swap newlines with spaces or remove entirely.
+
+- `limit` :  The max size cutoff for a given text split.
+- `preferred_limit` : A soft target size for chunking. If set > 0 and less than the hard limit, the splitter
+                      will try to create chunks near this size while still respecting the hard limit.
+                      Disabled by default when set to -1.
+
+  Depending on the component, the preferred_limit would not be required or optimal. For instance Azure services/components typically have a batch limit of around 50,000 characters for a single job, with no need for a soft text limit to perform effective translation.
+
 
 For instance:
 ```
@@ -48,9 +57,15 @@ For instance:
                   ...
                   self.sat_model,
                   split_mode='DEFAULT')
-                  newline_behavior='NONE')
+                  newline_behavior='NONE',
+                  limit = 50000,
+                  preferred_limit = 25000)
 ```
-Will attempt to split using an SaT model, using the default chunking parameters and no newline adjustments.
+Will attempt to split using an SaT model, using the default chunking parameters and no newline adjustments. The given text chunks
+would ideally be around 25,000 characters (or tokens, depending on the text size function provided) but can in some cases reach 50,000
+if the text splitter is unable to identify a proper split at the lower preferred limit.
+
+
 
 
 # Installation

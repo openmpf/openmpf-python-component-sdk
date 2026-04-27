@@ -47,8 +47,6 @@ MODELS_PATH: Traversable = importlib.resources.files(__name__) / 'models'
 
 log = logging.getLogger(__name__)
 
-_LAST_WS_RE = re.compile(r"\s(?=\S*$)")
-
 
 # These models must have an specified language during sentence splitting.
 WTP_MANDATORY_ADAPTOR = {
@@ -60,6 +58,20 @@ WTP_MANDATORY_ADAPTOR = {
 }
 
 GPU_AVAILABLE = torch.cuda.is_available()
+
+class SentencePieces(list):
+    """
+    Internal list-like container for sentence pieces.
+
+    If `reconstructs_original` is True, concatenating the pieces in order
+    reconstructs the original input text exactly, so cumulative lengths may be
+    used as true breakpoint indices.
+    """
+    __slots__ = ("reconstructs_original",)
+
+    def __init__(self, iterable=(), reconstructs_original: bool = False):
+        super().__init__(iterable)
+        self.reconstructs_original = reconstructs_original
 
 
 class TextSplitterModel:
@@ -162,12 +174,12 @@ class TextSplitterModel:
         else:
             self.sat_model.to("cpu")
 
-
     def _split_wtp(self, text: str, lang: Optional[str] = None) -> List[str]:
         if lang:
             iso_lang = WtpLanguageSettings.convert_to_iso(lang)
             if iso_lang:
-                return self.wtp_model.split(text, lang_code=iso_lang)
+                raw = self.wtp_model.split(text, lang_code=iso_lang)
+                return self._restore_original_whitespace(text, raw)
             else:
                 log.warning(f"Language {lang} was not used to train WtP model. "
                             "If text splitting is not working well with WtP, "
@@ -177,8 +189,11 @@ class TextSplitterModel:
             log.warning("WtP model requires a language. "
                         f"Using default language : {self._default_lang}.")
             iso_lang = WtpLanguageSettings.convert_to_iso(self._default_lang)
-            return self.wtp_model.split(text, lang_code=iso_lang)
-        return self.wtp_model.split(text)
+            raw = self.wtp_model.split(text, lang_code=iso_lang)
+            return self._restore_original_whitespace(text, raw)
+
+        raw = self.wtp_model.split(text)
+        return self._restore_original_whitespace(text, raw)
 
     def _update_spacy_model(self, spacy_model_name: str):
         self.spacy_model = spacy.load(spacy_model_name, exclude=["parser"])
@@ -186,14 +201,74 @@ class TextSplitterModel:
 
     def _split_sat(self, text: str, lang: Optional[str] = None) -> List[str]:
         # TODO: For now, we'll only use the SaT models that are language agnostic.
-        return self.sat_model.split(text)
+        raw = self.sat_model.split(text)
+        return self._restore_original_whitespace(text, raw)
 
-    def _split_spacy(self, text: str, lang: Optional[str] = None) -> List[str]:
+    def _split_spacy(self, text: str, lang: Optional[str] = None) -> SentencePieces:
         # TODO: We may add an auto model selection for spaCy in the future.
         # However, the drawback is we will also need to
         # download a large number of spaCy models beforehand.
         processed_text = self.spacy_model(text)
-        return [sent.text_with_ws for sent in processed_text.sents]
+        pieces = [sent.text_with_ws for sent in processed_text.sents if len(sent.text_with_ws)]
+        return SentencePieces(pieces, reconstructs_original=("".join(pieces) == text))
+
+    @staticmethod
+    def _restore_original_whitespace(text: str, pieces: List[str]) -> SentencePieces:
+        """
+        Realign sentence pieces back onto the original text.
+
+        If the splitter output already reconstructs the original text, return it
+        unchanged (except for filtering exact empty strings). Otherwise, attempt to
+        reattach any skipped whitespace/newlines to the previous segment so that the
+        returned pieces behave more like spaCy's `text_with_ws` output.
+
+        Returns a SentencePieces object carrying whether the result reconstructs the
+        original text exactly.
+        """
+        raw_pieces = [p for p in pieces if p]
+        if not raw_pieces:
+            return SentencePieces([], reconstructs_original=True)
+
+        # Fast path: output already reconstructs the original text.
+        if "".join(raw_pieces) == text:
+            return SentencePieces(raw_pieces, reconstructs_original=True)
+
+        rebuilt: List[str] = []
+        pos = 0
+
+        for piece in raw_pieces:
+            idx = text.find(piece, pos)
+
+            if idx == -1:
+                stripped = piece.strip()
+                if not stripped:
+                    continue
+                idx = text.find(stripped, pos)
+                if idx == -1:
+                    log.debug(
+                        "Could not align sentence pieces back to original text; "
+                        "returning raw splitter output."
+                    )
+                    return SentencePieces(raw_pieces, reconstructs_original=False)
+                piece = stripped
+
+            end = idx + len(piece)
+
+            if not rebuilt:
+                # First piece absorbs any leading whitespace.
+                rebuilt.append(text[pos:end])
+            else:
+                # Attach inter-sentence whitespace/newlines to the previous piece.
+                rebuilt[-1] += text[pos:idx]
+                rebuilt.append(text[idx:end])
+
+            pos = end
+
+        # Attach trailing remainder (typically whitespace/newlines) to the last piece.
+        rebuilt[-1] += text[pos:]
+
+        return SentencePieces(rebuilt, reconstructs_original=("".join(rebuilt) == text))
+
 
 class TextSplitter:
     NewLineBehaviorType = Union[
@@ -209,8 +284,32 @@ class TextSplitter:
         newline_behavior: NewLineBehaviorType = 'GUESS',
         preferred_limit: int = -1
     ) -> None:
+        """ Create a text splitter using the provided splitting model and size estimation function.
+
+            Parameters:
+            text -- Given text to be divided, as needed.
+            limit -- The maximum number of characters, tokens, or other size estimation limit.
+            num_boundary_chars -- The number of characters to be considered during processing.
+            get_text_size -- Size estimation function, typically len() or a sentence token count function.
+            sentence_model -- A given TextSplitterModel to run during processing.
+            in_lang (Optional) -- A given text language, some text splitter models require this.
+            split_mode (Optional) -- set to `DEFAULT` for splitting by chunk size and `SENTENCE` when splitting by sentences.
+            newline_behavior (Optional) -- controls how newlines are handled in a submitted input text.
+                Options include:
+                    - `GUESS`  to choose ' ' for space-separated langs; '' for Chinese/Japanese/Korean.
+                    - `SPACE`  to always replace with a single space.
+                    - `REMOVE` to always remove (no space).
+                    - `NONE`   to no change.
+                By default, the newline behavior will attempt to guess whether to swap newlines with spaces or remove entirely.
+            preferred_limit (Optional) -- A soft target size for chunking. If set > 0 and less than the hard limit, the splitter
+                                          will try to create chunks near this size while still respecting the hard limit.
+                                          Disabled by default when set to -1.
+        """
 
         self._sentence_model = sentence_model
+
+        if limit < 1:
+            raise ValueError("TextSplitter limit must be >= 1.")
         self._limit = limit
         self._num_boundary_chars = num_boundary_chars
         self._get_text_size = get_text_size
@@ -349,14 +448,33 @@ class TextSplitter:
 
     def _compute_breakpoints_from_sentences(self, text: str, pieces: List[str]) -> List[int]:
         """
-        Align sentence pieces back onto `text` to produce true breakpoint indices.
-        This avoids drift when the sentence model trims/normalizes whitespace.
-        Returns indices `bp` such that `text[:bp]` ends at a real sentence boundary.
+        Produce breakpoint indices in `text` from sentence pieces.
+        Fast track:
+            If pieces reconstruct the original text exactly, cumulative lengths are
+            valid slice indices and can be used directly.
+
+        Fallback:
+            If reconstruction is not guaranteed (for example, using a custom splitter model),
+            align pieces back onto `text`.
         """
+        raw_pieces = [p for p in pieces if p]
+        if not raw_pieces:
+            return []
+
+        # Fast track for built-in splitters that preserve/reconstruct original text.
+        if getattr(pieces, "reconstructs_original", False):
+            break_pts: List[int] = []
+            cumulative = 0
+            for s in raw_pieces:
+                cumulative += len(s)
+                break_pts.append(cumulative)
+            return break_pts
+
+        # Fallback for custom splitters / non-reconstructing outputs.
         break_pts: List[int] = []
         pos = 0
 
-        for s in pieces:
+        for s in raw_pieces:
             if not s:
                 continue
 
@@ -444,7 +562,7 @@ class TextSplitter:
 
                 cut = len(left)
                 if 0 < cut < len(text) and text[cut - 1].isalnum() and text[cut].isalnum():
-                    m = _LAST_WS_RE.search(left)
+                    m = re.search(r"\s(?=\S*$)", left)
                     if m:
                         left = left[:m.end()]
 
