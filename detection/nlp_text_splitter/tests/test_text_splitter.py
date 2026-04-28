@@ -414,6 +414,24 @@ class TestTextSplitter(unittest.TestCase):
         self.assertEqual(['hello world ', 'oopsbackup'], chunks)
         self.assertEqual(text, "".join(chunks))
 
+    def test_mid_word_protection_allows_split_at_punctuation(self):
+        text = "999 1,000"
+        model = ConfigurableMockSplitter(mode="whole", name="midword_punctuation_case")
+
+        chunks = list(TextSplitter.split(
+            text=text,
+            limit=100,
+            num_boundary_chars=0,
+            get_text_size=len,
+            sentence_model=model,
+            preferred_limit=5
+        ))
+
+        # This test documents current best-effort behavior for mid sentence splits
+        # In this case, the number 1,000 is inadvertently split due to the extra comma.
+        self.assertEqual(text, "".join(chunks))
+        self.assertEqual(['999 1', ',000'], chunks)
+
     def test_mid_word_protection_no_whitespace_available(self):
         # Confirm that raw text is split if whitespace backup fails.
         text = "averyveryverylongtoken"

@@ -560,6 +560,9 @@ class TextSplitter:
 
                     left = left_window[:chosen]
 
+                # If the cut lands inside an alphanumeric section, back up to the last whitespace.
+                # This is a best-effort heuristic: punctuation-delimited numeric forms such as
+                # "1,000" or "1.0" may instead split at punctuation boundaries.
                 cut = len(left)
                 if 0 < cut < len(text) and text[cut - 1].isalnum() and text[cut].isalnum():
                     m = re.search(r"\s(?=\S*$)", left)
