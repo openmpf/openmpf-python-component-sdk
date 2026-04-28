@@ -168,7 +168,7 @@ class TextSplitterModel:
             log.warning(f"SaT model {sat_model_name} not found locally; downloading from Hugging Face.")
             self.sat_model = SaT(sat_model_name)
 
-        # Move model to device; SaT benefits from half precision on GPU.
+        # Move model to device; SaT runtime benefits from half precision on GPU.
         if device == "cuda":
             self.sat_model.half().to("cuda")
         else:
