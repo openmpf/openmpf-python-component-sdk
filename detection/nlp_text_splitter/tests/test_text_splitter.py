@@ -332,7 +332,7 @@ class TestTextSplitter(unittest.TestCase):
         result = splitter._isolate_largest_section("Alpha beta gamma.")
         self.assertEqual("Alpha beta gamma.", result)
 
-    def test_isolate_largest_section_empty_string_list_piece(self):
+    def test_isolate_largest_section_list_with_empty_string(self):
         # Confirm edge case where splitter fails to identify a split.
         # This variant introduces one element in the list that's also empty.
         model = ConfigurableMockSplitter(mode="empty_string_list", name="list_with_empty_string_case")
