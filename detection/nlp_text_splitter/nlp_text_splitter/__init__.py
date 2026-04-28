@@ -294,7 +294,7 @@ class TextSplitter:
             sentence_model -- A given TextSplitterModel to run during processing.
             in_lang (Optional) -- A given text language, some text splitter models require this.
             split_mode (Optional) -- set to `DEFAULT` for splitting by chunk size and `SENTENCE` when splitting by sentences.
-            newline_behavior (Optional) -- controls how newlines are handled in a submitted input text.
+            newline_behavior (Optional) -- controls how single newlines between words are handled in a submitted input text.
                 Options include:
                     - `GUESS`  to choose ' ' for space-separated langs; '' for Chinese/Japanese/Korean.
                     - `SPACE`  to always replace with a single space.

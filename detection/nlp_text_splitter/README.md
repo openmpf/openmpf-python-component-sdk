@@ -36,12 +36,13 @@ splitting behaviors:
 
 - `split_mode`: set to `DEFAULT` for splitting by chunk size and `SENTENCE` when splitting by sentences
 
-- `newline_behavior` : controls how newlines are handled in a submitted input text. Options include:
+- `newline_behavior` : controls how single newlines are handled in a submitted input text. Options include:
   - `GUESS`  to choose ' ' for space-separated langs; '' for Chinese/Japanese/Korean.
   - `SPACE`  to always replace with a single space.
   - `REMOVE` to always remove (no space).
   - `NONE`   to no change.
   By default, the newline behavior will attempt to guess whether to swap newlines with spaces or remove entirely.
+  Note that newlines that exist next to other newlines or whitespace are ignored.
 
 - `limit` :  The max size cutoff for a given text split.
 - `preferred_limit` : A soft target size for chunking. If set > 0 and less than the hard limit, the splitter
@@ -65,7 +66,19 @@ Will attempt to split using an SaT model, using the default chunking parameters 
 would ideally be around 25,000 characters (or tokens, depending on the text size function provided) but can in some cases reach 50,000
 if the text splitter is unable to identify a proper split at the lower preferred limit.
 
+## Edge case: mid-word splits
 
+In most cases, the text splitter should be able to identify an appropriate sentence break, especially when sufficient text is available.
+
+However, if a single sentence is long enough that the configured limit falls in the middle of an alphanumeric sequence, the splitter uses the following best-effort heuristic:
+
+1. Detect that the split point falls between two alphanumeric characters.
+2. Attempt to backtrack to the nearest whitespace character.
+3. Split at that whitespace and continue processing.
+
+If no whitespace can be found, the splitter will fall back to a mid-word / mid-token split so that progress can still be made.
+
+Please note that this is only a heuristic. Punctuation-delimited values such as `1,000` or `1.0` may still split at punctuation boundaries, and languages that do not normally use whitespace may still require character-level splits in some cases.
 
 
 # Installation
