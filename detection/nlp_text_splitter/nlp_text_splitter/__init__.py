@@ -24,6 +24,18 @@
 # limitations under the License.                                            #
 #############################################################################
 
+import sys
+
+try:
+    from wtpsplit import WtP, SaT
+except ModuleNotFoundError as e:
+    if e.name == 'torchvision' and 'transformers' in sys.modules:
+        e.add_note(
+            'To avoid the dependency on "torchvision", the "wtpsplit" module must be '
+            'imported before the "transformers" module.')
+    raise
+
+
 import logging
 import os
 import importlib.resources
@@ -34,7 +46,6 @@ import torch
 import re
 import bisect
 
-from wtpsplit import WtP, SaT
 from typing import Callable, List, Optional, Tuple, Union
 
 from .wtp_lang_settings import WtpLanguageSettings
