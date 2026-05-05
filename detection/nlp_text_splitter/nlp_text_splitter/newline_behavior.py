@@ -33,7 +33,7 @@ from typing import Callable, Literal, Optional, Union
 import mpf_component_api as mpf
 
 # Languages that typically do NOT use spaces between words
-NO_SPACE_LANGS = ('JA', 'YUE', 'ZH-HANS', 'ZH-HANT')
+NO_SPACE_LANGS = ('JA', 'YUE', 'ZH', 'ZH-HANS', 'ZH-HANT')
 
 class ChineseAndJapaneseCodePoints:
     # From http://www.unicode.org/charts/

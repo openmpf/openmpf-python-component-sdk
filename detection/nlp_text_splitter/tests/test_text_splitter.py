@@ -544,6 +544,13 @@ class TestTextSplitter(unittest.TestCase):
         sep = NewLineBehavior._guess_lang_separator("ignored", "en")
         self.assertEqual(" ", sep)
 
+        sep = NewLineBehavior._guess_lang_separator("ignored", "zh")
+        self.assertEqual("", sep)
+
+        # Double check case normalization also.
+        sep = NewLineBehavior._guess_lang_separator("ignored", "ZH")
+        self.assertEqual("", sep)
+
     def test_replace_new_lines_isolated_newline_branch(self):
         text = "abc\ndef"
         out = NewLineBehavior.get("SPACE")(text, None)
