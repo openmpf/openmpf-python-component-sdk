@@ -364,7 +364,7 @@ class TestTextSplitter(unittest.TestCase):
         splitter._split_sentence_text = wrapped
 
         chunks = list(splitter._split())
-        self.assertTrue(is_called["called"])
+        self.assertTrue(is_called)
         self.assertEqual(chunks, ['one two three four five ', 'six seven eight nine ten'])
         self.assertGreater(len(chunks), 1)
 
