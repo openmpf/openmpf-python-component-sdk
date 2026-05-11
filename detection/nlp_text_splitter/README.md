@@ -23,8 +23,7 @@ generally offers better accuracy/efficiency.
 On the other hand, spaCy has a single multilingual sentence detection
 that appears to work better for splitting up English text in certain cases.
 
-This component has been updated to use the Azure Translation Component's NewLineBehavior class
-for swapping newlines with either whitespace or removing it altogether based on script detected.
+This utility includes a `NewLineBehavior` helper for swapping single newlines with either whitespace or removing them altogether based on script detected.
 
 The reason why we need to consider the script/character encodings is because certain languages
 will treat whitespace between words as possessing different meanings. For instance in Chinese
@@ -117,16 +116,28 @@ Please note that several customizations are supported:
 
 Based on testing, `sat-6l-sm` emerges as the recommended model, particularly when accuracy is prioritized and GPU resources (~1 GB) are available
 
-| Metric                   | sat-3l-sm       | sat-6l-sm       | Difference               |
-|--------------------------|-----------------|-----------------|--------------------------|
-| **Accuracy (%)**         | 97.6%           | **98.8%**       | +1.2%                    |
-| **GPU Memory Used (MB)** | **1083.8**      | 1125.8          | +42 MB (~4% increase)    |
-| **GPU Processing Time (s)**  | **2.81**    | 3.00            | +0.19 s                  |
-| **CPU Processing Time (s)**  | **6.57**    | 11.72           | **+5.15 s (significant)**|
+| Metric                   | sat-3l-sm       | sat-6l-sm       | Difference                 |
+|--------------------------|-----------------|-----------------|----------------------------|
+| **Accuracy (%)**         | 97.6%           | **98.8%**       | +1.2%                      |
+| **GPU Memory Used (MB)** | **1083.8**      | 1125.8          | +42 MB (~4% increase)      |
+| **GPU Processing Time (s)**  | **2.81**    | 3.00            | +0.19 s                    |
+| **CPU Processing Time (s)**  | **6.57**    | 11.72           | **+5.15 s (~78% increase)**|
 
 Key Considerations:
 - `sat-3l-sm` is slightly less accurate but runs at x2 speedup in CPU compared to `sat-6l-sm`
 - While running on GPU: Both models use roughly the same amount of GPU resource/runtime.
 - This means that it's generally advantageous to use `sat-6l-sm` when GPU is available, and to fall back to `sat-3l-sm` if only CPU resources are available.
 
-For detailed results and additional models, see [WtP SaT Text Splitter Analysis](WtP%20SaT%20Text%20Splitter%20Analysis.xlsx).
+## Test Data
+
+The MPF team created a small set of synthetic benchmarks for evaluating the text splitter models.
+
+The benchmarks were designed to cover several categories of sentence-splitting behavior, including:
+
+- Short explicit edge cases in English and German
+- Titles, abbreviations, numbering, and numeric forms
+- Lorem-Ipsum English passages built from a randomized pool of everyday English sentences.
+- Multilingual passages in English, Chinese, Russian, Spanish, and Arabic
+- Multilingual passages created by shuffling and mixing sentences from different languages.
+
+In total, the analysis evaluated 85 tests across these categories. Users who want to inspect the exact passages and model outputs can review the `Model Predictions` tab in [WtP SaT Text Splitter Analysis](WtP%20SaT%20Text%20Splitter%20Analysis.xlsx), as well as review overall stats for each model tested.

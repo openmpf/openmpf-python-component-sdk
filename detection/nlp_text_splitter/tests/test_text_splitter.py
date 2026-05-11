@@ -27,7 +27,7 @@
 import pathlib
 import unittest
 
-from nlp_text_splitter import TextSplitterModel, TextSplitter, SentencePieces
+from nlp_text_splitter import TextSplitterModel, TextSplitter
 from nlp_text_splitter.newline_behavior import NewLineBehavior
 
 
@@ -43,13 +43,11 @@ class ConfigurableMockSplitter:
       - "empty_string_list" : return [""]
       - "whole"             : return [text]
       - "pieces"            : return the configured pieces
-      - "callback"          : call the configured callback(text, lang)
     """
 
-    def __init__(self, mode="whole", pieces=None, callback=None, name="ConfigurableMockSplitter"):
+    def __init__(self, mode="whole", pieces=None, name="ConfigurableMockSplitter"):
         self.mode = mode
         self.pieces = list(pieces or [])
-        self.callback = callback
         self.name = name
         self.calls = []
 
@@ -66,10 +64,6 @@ class ConfigurableMockSplitter:
             return [text]
         if self.mode == "pieces":
             return list(self.pieces)
-        if self.mode == "callback":
-            if self.callback is None:
-                raise AssertionError("callback mode requires a callback")
-            return list(self.callback(text, lang))
 
         raise AssertionError(f"Unknown ConfigurableMockSplitter mode: {self.mode}")
 
@@ -117,6 +111,7 @@ class TestTextSplitter(unittest.TestCase):
         actual = self.wtp_model._split_wtp(text_without_newlines)
         self.assertEqual(3, len(actual))
         for line in actual:
+            self.assertFalse(line == "")
             self.assertTrue(line.endswith('。'))
 
         actual = self.spacy_model._split_spacy(text_without_newlines)
@@ -124,6 +119,7 @@ class TestTextSplitter(unittest.TestCase):
 
         # However, WtP prefers newlines over the '。' character.
         actual = self.wtp_model._split_wtp(text)
+        self.assertFalse(any(s == "" for s in actual))
         self.assertEqual(10, len(actual))
 
         # SaT seems to try to split using additional features, in addition to newlines.
@@ -358,11 +354,11 @@ class TestTextSplitter(unittest.TestCase):
             split_mode="SENTENCE"
         )
 
-        is_called = {"called": False}
+        is_called = False
         orig = splitter._split_sentence_text
-
         def wrapped(text):
-            is_called["called"] = True
+            nonlocal is_called
+            is_called = True
             yield from orig(text)
 
         splitter._split_sentence_text = wrapped
