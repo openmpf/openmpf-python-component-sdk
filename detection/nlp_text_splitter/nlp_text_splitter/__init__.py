@@ -5,11 +5,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2024 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2025 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2024 The MITRE Corporation                                      #
+# Copyright 2025 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -27,7 +27,7 @@
 import sys
 
 try:
-    from wtpsplit import WtP
+    from wtpsplit import WtP, SaT
 except ModuleNotFoundError as e:
     if e.name == 'torchvision' and 'transformers' in sys.modules:
         e.add_note(
@@ -42,34 +42,51 @@ import importlib.resources
 from importlib.resources.abc import Traversable
 
 import spacy
-from typing import Callable, List, Optional, Tuple
+import torch
+import re
+import bisect
+
+from typing import Callable, List, Optional, Tuple, Union
 
 from .wtp_lang_settings import WtpLanguageSettings
-
-import torch
-
+from .newline_behavior import NewLineBehavior
 
 DEFAULT_WTP_MODELS = "/opt/wtp/models"
 
 # If we want to package model installation with this utility in the future:
-WTP_MODELS_PATH: Traversable = importlib.resources.files(__name__) / 'models'
+MODELS_PATH: Traversable = importlib.resources.files(__name__) / 'models'
 
 log = logging.getLogger(__name__)
 
-# These models must have an specified language during sentence splitting.
-WTP_MANDATORY_ADAPTOR = ['wtp-canine-s-1l',
-                         'wtp-canine-s-3l',
-                         'wtp-canine-s-6l',
-                         'wtp-canine-s-9l',
-                         'wtp-canine-s-12l']
 
-GPU_AVAILABLE = False
-if torch.cuda.is_available():
-    GPU_AVAILABLE = True
+# These models must have an specified language during sentence splitting.
+WTP_MANDATORY_ADAPTOR = {
+    'wtp-canine-s-1l',
+    'wtp-canine-s-3l',
+    'wtp-canine-s-6l',
+    'wtp-canine-s-9l',
+    'wtp-canine-s-12l',
+}
+
+GPU_AVAILABLE = torch.cuda.is_available()
+
+class SentencePieces(list):
+    """
+    Internal list-like container for sentence pieces.
+
+    If `reconstructs_original` is True, concatenating the pieces in order
+    reconstructs the original input text exactly, so cumulative lengths may be
+    used as true breakpoint indices.
+    """
+    __slots__ = ("reconstructs_original",)
+
+    def __init__(self, iterable=(), reconstructs_original: bool = False):
+        super().__init__(iterable)
+        self.reconstructs_original = reconstructs_original
 
 
 class TextSplitterModel:
-    # To hold spaCy, WtP, and other potential sentence detection models in cache
+    # To hold spaCy, WtP, SaT, and other potential sentence detection models in cache
 
     def __init__(self, model_name: str, model_setting: str, default_lang: str = "en") -> None:
         self._model_name = ""
@@ -79,74 +96,101 @@ class TextSplitterModel:
         self.split = lambda t, **param: [t]
         self.update_model(model_name, model_setting, default_lang)
 
-    def update_model(self, model_name: str, model_setting: str = "cpu", default_lang: str="en"):
-        if model_name:
-            if "wtp" in model_name:
-                self._update_wtp_model(model_name, model_setting, default_lang)
-                self.split = self._split_wtp
-                log.info(f"Setup WtP model: {model_name}")
-            else:
-                self._update_spacy_model(model_name)
-                self.split = self._split_spacy
-                log.info(f"Setup spaCy model: {model_name}")
+    def update_model(self, model_name: str, model_setting: str = "cpu", default_lang: str = "en"):
+        if not model_name:
+            return
 
-    def _update_wtp_model(self, wtp_model_name: str,
-                          model_setting: str,
-                          default_lang: str) -> None:
+        lower_name = model_name.lower()
+        if lower_name.startswith("wtp"):
+            self._update_wtp_model(model_name, model_setting, default_lang)
+            self.split = self._split_wtp
+            log.info(f"Setup WtP model: {model_name}")
+        elif lower_name.startswith("sat"):
+            self._update_sat_model(model_name, model_setting, default_lang)
+            self.split = self._split_sat
+            log.info(f"Setup SaT model: {model_name}")
+        else:
+            self._update_spacy_model(model_name)
+            self.split = self._split_spacy
+            log.info(f"Setup spaCy model: {model_name}")
 
-        if model_setting == "gpu" or model_setting == "cuda":
+    def _resolve_cpu_gpu_device(self, model_setting: str) -> str:
+        if model_setting in ("gpu", "cuda"):
             if GPU_AVAILABLE:
-                model_setting = "cuda"
+                return "cuda"
             else:
                 log.warning("PyTorch determined that CUDA is not available. "
                             "You may need to update the NVIDIA driver for the host system, "
                             "or reinstall PyTorch with GPU support by setting "
                             "ARGS BUILD_TYPE=gpu in the Dockerfile when building this component.")
-                model_setting = "cpu"
-        elif model_setting != "cpu":
-            log.warning("Invalid WtP model setting. Only `cpu` and `cuda` "
-                        "(or `gpu`) WtP model options available at this time. "
+                return "cpu"
+        if model_setting != "cpu":
+            log.warning(
+                f"Invalid model setting {model_setting}. Only `cpu` and `cuda` "
+                        "(or `gpu`) WtP/SaT model options available at this time. "
                         "Defaulting to `cpu` mode.")
-            model_setting = "cpu"
+        return "cpu"
 
-        if wtp_model_name in WTP_MANDATORY_ADAPTOR:
-            self._mandatory_wtp_language = True
-            self._default_lang = default_lang
+    def _find_local_model_path(self, model_name: str) -> Optional[str]:
+        candidate = MODELS_PATH / model_name
+        if candidate.is_file() or candidate.is_dir():
+            with importlib.resources.as_file(candidate) as path:
+                return str(path)
 
-        if self._model_name == wtp_model_name and self._model_setting == model_setting:
-            log.info(f"Using cached model, running on {self._model_setting}: "
-                     f"{self._model_name}")
+        fallback = os.path.join(DEFAULT_WTP_MODELS, model_name)
+        if os.path.exists(fallback):
+            return fallback
+        return None
+
+    def _update_wtp_model(self, wtp_model_name: str,
+                          model_setting: str,
+                          default_lang: str) -> None:
+        device = self._resolve_cpu_gpu_device(model_setting)
+
+        self._model_name = wtp_model_name
+        self._model_setting = device
+        self._default_lang = default_lang
+        self._mandatory_wtp_language = (wtp_model_name in WTP_MANDATORY_ADAPTOR)
+
+        local_path = self._find_local_model_path(wtp_model_name)
+
+        if local_path:
+            log.info(f"Using downloaded WtP model at {local_path}")
+            self.wtp_model = WtP(local_path)
         else:
-            self._model_setting = model_setting
-            self._model_name = wtp_model_name
-            # Check if model has been downloaded
-            if (WTP_MODELS_PATH / wtp_model_name).is_file():
-                log.info(f"Using downloaded {wtp_model_name} model.")
-                with importlib.resources.as_file(WTP_MODELS_PATH / wtp_model_name) as path:
-                    self.wtp_model = WtP(str(path))
-            elif os.path.exists(os.path.join(DEFAULT_WTP_MODELS,
-                                             wtp_model_name)):
+            log.warning(f"WtP model {wtp_model_name} not found locally; downloading from Hugging Face.")
+            self.wtp_model = WtP(wtp_model_name)
+        self.wtp_model.to(device)
 
-                log.info(f"Using downloaded {wtp_model_name} model.")
-                wtp_model_name = os.path.join(DEFAULT_WTP_MODELS,
-                                              wtp_model_name)
-                self.wtp_model = WtP(wtp_model_name)
-            else:
-                log.warning(f"Model {wtp_model_name} not found, "
-                             "downloading from hugging face.")
-                self.wtp_model =  WtP(wtp_model_name)
+    def _update_sat_model(self, sat_model_name: str, model_setting: str, default_lang: str) -> None:
+        device = self._resolve_cpu_gpu_device(model_setting)
 
-            if model_setting != "cpu" and model_setting != "cuda":
-                log.warning(f"Invalid setting for WtP runtime {model_setting}. "
-                             "Defaulting to CPU mode.")
-                model_setting = "cpu"
-            self.wtp_model.to(model_setting)
+        self._model_name = sat_model_name
+        self._model_setting = device
+        self._default_lang = default_lang
+        self._mandatory_wtp_language = (sat_model_name in WTP_MANDATORY_ADAPTOR)
+
+        local_path = self._find_local_model_path(sat_model_name)
+
+        if local_path:
+            log.info(f"Using downloaded SaT model at {local_path}")
+            self.sat_model = SaT(local_path)
+        else:
+            log.warning(f"SaT model {sat_model_name} not found locally; downloading from Hugging Face.")
+            self.sat_model = SaT(sat_model_name)
+
+        # Move model to device; SaT runtime benefits from half precision on GPU.
+        if device == "cuda":
+            self.sat_model.half().to("cuda")
+        else:
+            self.sat_model.to("cpu")
 
     def _split_wtp(self, text: str, lang: Optional[str] = None) -> List[str]:
         if lang:
             iso_lang = WtpLanguageSettings.convert_to_iso(lang)
             if iso_lang:
-                return self.wtp_model.split(text, lang_code=iso_lang)
+                raw = self.wtp_model.split(text, lang_code=iso_lang)
+                return self._restore_original_whitespace(text, raw)
             else:
                 log.warning(f"Language {lang} was not used to train WtP model. "
                             "If text splitting is not working well with WtP, "
@@ -156,44 +200,159 @@ class TextSplitterModel:
             log.warning("WtP model requires a language. "
                         f"Using default language : {self._default_lang}.")
             iso_lang = WtpLanguageSettings.convert_to_iso(self._default_lang)
-            return self.wtp_model.split(text, lang_code=iso_lang)
-        return self.wtp_model.split(text)
+            raw = self.wtp_model.split(text, lang_code=iso_lang)
+            return self._restore_original_whitespace(text, raw)
+
+        raw = self.wtp_model.split(text)
+        return self._restore_original_whitespace(text, raw)
 
     def _update_spacy_model(self, spacy_model_name: str):
         self.spacy_model = spacy.load(spacy_model_name, exclude=["parser"])
         self.spacy_model.enable_pipe("senter")
 
-    def _split_spacy(self, text: str, lang: Optional[str] = None) -> List[str]:
+    def _split_sat(self, text: str, lang: Optional[str] = None) -> List[str]:
+        # TODO: For now, we'll only use the SaT models that are language agnostic.
+        raw = self.sat_model.split(text)
+        return self._restore_original_whitespace(text, raw)
+
+    def _split_spacy(self, text: str, lang: Optional[str] = None) -> SentencePieces:
         # TODO: We may add an auto model selection for spaCy in the future.
         # However, the drawback is we will also need to
         # download a large number of spaCy models beforehand.
         processed_text = self.spacy_model(text)
-        return [sent.text_with_ws for sent in processed_text.sents]
+        pieces = [sent.text_with_ws for sent in processed_text.sents if len(sent.text_with_ws)]
+        return SentencePieces(pieces, reconstructs_original=("".join(pieces) == text))
+
+    @staticmethod
+    def _restore_original_whitespace(text: str, pieces: List[str]) -> SentencePieces:
+        """
+        Realign sentence pieces back onto the original text.
+
+        If the splitter output already reconstructs the original text, return it
+        unchanged (except for filtering exact empty strings). Otherwise, attempt to
+        reattach any skipped whitespace/newlines to the previous segment so that the
+        returned pieces behave more like spaCy's `text_with_ws` output.
+
+        Returns a SentencePieces object carrying whether the result reconstructs the
+        original text exactly.
+        """
+        raw_pieces = [p for p in pieces if p]
+        if not raw_pieces:
+            return SentencePieces([], reconstructs_original=True)
+
+        # Fast path: output already reconstructs the original text.
+        if "".join(raw_pieces) == text:
+            return SentencePieces(raw_pieces, reconstructs_original=True)
+
+        rebuilt: List[str] = []
+        pos = 0
+
+        for piece in raw_pieces:
+            idx = text.find(piece, pos)
+
+            if idx == -1:
+                stripped = piece.strip()
+                if not stripped:
+                    continue
+                idx = text.find(stripped, pos)
+                if idx == -1:
+                    log.debug(
+                        "Could not align sentence pieces back to original text; "
+                        "returning raw splitter output."
+                    )
+                    return SentencePieces(raw_pieces, reconstructs_original=False)
+                piece = stripped
+
+            end = idx + len(piece)
+
+            if not rebuilt:
+                # First piece absorbs any leading whitespace.
+                rebuilt.append(text[pos:end])
+            else:
+                # Attach inter-sentence whitespace/newlines to the previous piece.
+                rebuilt[-1] += text[pos:idx]
+                rebuilt.append(text[idx:end])
+
+            pos = end
+
+        # Attach trailing remainder (typically whitespace/newlines) to the last piece.
+        rebuilt[-1] += text[pos:]
+
+        return SentencePieces(rebuilt, reconstructs_original=("".join(rebuilt) == text))
+
 
 class TextSplitter:
+    NewLineBehaviorType = Union[
+        NewLineBehavior.Behavior,  # 'GUESS' | 'SPACE' | 'REMOVE' | 'NONE' | callable | None
+    ]
 
     def __init__(
         self, text: str, limit: int, num_boundary_chars: int,
         get_text_size: Callable[[str], int],
         sentence_model: TextSplitterModel,
-        in_lang: Optional[str] = None) -> None:
+        in_lang: Optional[str] = None,
+        split_mode: str = 'DEFAULT',
+        newline_behavior: NewLineBehaviorType = 'GUESS',
+        preferred_limit: int = -1
+    ) -> None:
+        """ Create a text splitter using the provided splitting model and size estimation function.
+
+            Parameters:
+            text -- Given text to be divided, as needed.
+            limit -- The maximum number of characters, tokens, or other size estimation limit.
+            num_boundary_chars -- The number of characters to be considered during processing.
+            get_text_size -- Size estimation function, typically len() or a sentence token count function.
+            sentence_model -- A given TextSplitterModel to run during processing.
+            in_lang (Optional) -- A given text language, some text splitter models require this.
+            split_mode (Optional) -- set to `DEFAULT` for splitting by chunk size and `SENTENCE` when splitting by sentences.
+            newline_behavior (Optional) -- controls how single newlines between words are handled in a submitted input text.
+                Options include:
+                    - `GUESS`  to choose ' ' for space-separated langs; '' for Chinese/Japanese/Korean.
+                    - `SPACE`  to always replace with a single space.
+                    - `REMOVE` to always remove (no space).
+                    - `NONE`   to no change.
+                By default, the newline behavior will attempt to guess whether to swap newlines with spaces or remove entirely.
+            preferred_limit (Optional) -- A soft target size for chunking. If set > 0 and less than the hard limit, the splitter
+                                          will try to create chunks near this size while still respecting the hard limit.
+                                          Disabled by default when set to -1.
+        """
+
         self._sentence_model = sentence_model
+
+        if limit < 1:
+            raise ValueError("TextSplitter limit must be >= 1.")
         self._limit = limit
         self._num_boundary_chars = num_boundary_chars
         self._get_text_size = get_text_size
+        self._in_lang = in_lang
+        self._split_mode = split_mode
+
+        self._newline_fn: Callable[[str, Optional[str]], str] = NewLineBehavior.get(newline_behavior)
         self._text = ""
         self._text_full_size = 0
         self._overhead_size = 0
         self._soft_limit = self._limit
-        self._in_lang = in_lang
+
+        if preferred_limit > 0:
+            self._preferred_limit = min(preferred_limit, limit)
+        else:
+            self._preferred_limit = limit
+
 
         if text:
             self.set_text(text)
 
     def set_text(self, text: str):
-        self._text = text
-        self._text_full_size = self._get_text_size(text)
-        chars_per_size = len(text) / self._text_full_size
+
+        if text:
+            self._text = self._newline_fn(text, self._in_lang)
+        else:
+            self._text = text
+
+        self._text_full_size = self._get_text_size(self._text)
+
+        text_size = self._text_full_size if self._text_full_size > 0 else 1
+        chars_per_size = len(self._text) / text_size
         self._overhead_size = self._get_text_size('')
 
         self._soft_limit = int(self._limit * chars_per_size) - self._overhead_size
@@ -205,7 +364,6 @@ class TextSplitter:
             # before applying chars_per_size weighting.
             self._soft_limit = max(1,
                                    int((self._limit - self._overhead_size) * chars_per_size))
-
     def _isolate_largest_section(self, text:str) -> str:
         # Using cached word splitting model, isolate largest section of text
         string_length = len(text)
@@ -217,10 +375,15 @@ class TextSplitter:
 
         start_indx = max(0, string_length - num_chars_to_process)
         substring = text[start_indx: string_length]
-        substring_list = self._sentence_model.split(substring, lang = self._in_lang)
-        div_index = string_length - len(substring_list[-1])
+        substring_list = self._sentence_model.split(substring, lang=self._in_lang)
+        if not substring_list:
+            return text
+        last = substring_list[-1]
+        if not last:
+            return text
+        div_index = string_length - len(last)
 
-        if div_index==start_indx:
+        if div_index == start_indx:
             return text
 
         return text[0:div_index]
@@ -229,16 +392,61 @@ class TextSplitter:
     def split(cls,
               text: str, limit: int, num_boundary_chars: int, get_text_size: Callable[[str], int],
               sentence_model: TextSplitterModel,
-              in_lang: Optional[str] = None
-             ):
-        return cls(text, limit, num_boundary_chars, get_text_size, sentence_model, in_lang)._split()
-
+              in_lang: Optional[str] = None,
+              split_mode: str = 'DEFAULT',
+              newline_behavior: NewLineBehavior.Behavior = 'GUESS',
+              preferred_limit: int = -1
+    ):
+        return cls(
+            text, limit, num_boundary_chars, get_text_size,
+            sentence_model, in_lang, split_mode, newline_behavior,
+            preferred_limit
+        )._split()
 
     def _split(self):
-        if self._text_full_size <= self._limit:
+        if self._split_mode == 'SENTENCE':
+            yield from self._split_sentences_individually()
+        else:
+            yield from self._split_default()
+
+    def _split_default(self):
+        effective_limit = min(self._preferred_limit, self._limit)
+
+        if self._text_full_size <= effective_limit:
             yield self._text
         else:
             yield from self._split_internal(self._text)
+
+    def _split_sentences_individually(self):
+        """
+        Yield one sentence at a time. If any individual sentence exceeds the limit,
+        reuse the internal chunking logic to subdivide that sentence.
+        """
+        sentences = self._sentence_model.split(self._text, lang=self._in_lang)
+        for sentence in sentences:
+            if self._get_text_size(sentence) <= self._limit:
+                yield sentence
+            else:
+                # Split oversized sentence using the default internal logic.
+                yield from self._split_sentence_text(sentence)
+
+    def _split_sentence_text(self, text: str):
+        saved = (
+            self._text,
+            self._text_full_size,
+            self._overhead_size,
+            self._soft_limit
+        )
+        try:
+            self.set_text(text)
+            yield from self._split_internal(text)
+        finally:
+            (
+                self._text,
+                self._text_full_size,
+                self._overhead_size,
+                self._soft_limit
+            ) = saved
 
     def _split_internal(self, text):
         right = text
@@ -248,27 +456,141 @@ class TextSplitter:
             if not right:
                 return
 
-    def _divide(self, text) -> Tuple[str, str]:
-        limit = self._soft_limit
-        while True:
-            left = text[:limit]
-            left_size = self._get_text_size(left)
 
-            if left_size <= self._limit:
-                if left != text:
-                    # If dividing into two parts
-                    # Determine soft boundary for left segment
-                    left = self._isolate_largest_section(left)
+    def _compute_breakpoints_from_sentences(self, text: str, pieces: List[str]) -> List[int]:
+        """
+        Produce breakpoint indices in `text` from sentence pieces.
+        Fast track:
+            If pieces reconstruct the original text exactly, cumulative lengths are
+            valid slice indices and can be used directly.
+
+        Fallback:
+            If reconstruction is not guaranteed (for example, using a custom splitter model),
+            align pieces back onto `text`.
+        """
+        raw_pieces = [p for p in pieces if p]
+        if not raw_pieces:
+            return []
+
+        # Fast track for built-in splitters that preserve/reconstruct original text.
+        if getattr(pieces, "reconstructs_original", False):
+            break_pts: List[int] = []
+            cumulative = 0
+            for s in raw_pieces:
+                cumulative += len(s)
+                break_pts.append(cumulative)
+            return break_pts
+
+        # Fallback for custom splitters / non-reconstructing outputs.
+        break_pts: List[int] = []
+        pos = 0
+
+        for s in raw_pieces:
+            if not s:
+                continue
+
+            # Try exact match first
+            idx = text.find(s, pos)
+
+            if idx == -1:
+                # Common issue: text models trim surrounding whitespace; try stripped piece
+                s2 = s.strip()
+                if not s2:
+                    continue
+                idx = text.find(s2, pos)
+                if idx == -1:
+                    # Could not align; stop and use whatever we have so far.
+                    # (Better to have partial breakpoints than wrong ones.)
+                    log.debug("Sentence alignment failed; using partial breakpoints.")
+                    return break_pts
+                s = s2
+
+            end = idx + len(s)
+            if 0 < end <= len(text):
+                break_pts.append(end)
+            pos = end
+
+        # Ensure sorted unique breakpoints
+        return sorted(set(break_pts))
+
+    def _divide(self, text) -> Tuple[str, str]:
+        max_limit = self._limit
+        soft_limit = self._soft_limit
+        preferred_enabled = (self._preferred_limit < self._limit)
+
+        # Always start with the existing max/guess
+        limit = soft_limit
+
+        while True:
+            left_window = text[:limit]
+            left_size = self._get_text_size(left_window)
+
+            if left_size <= max_limit:
+                # If preferred is enabled and this remainder is still larger than preferred,
+                # split even if left_window == text.
+                prefer_split = preferred_enabled and (left_size > self._preferred_limit)
+
+                # If not using preferred logic, preserve original behavior:
+                if not prefer_split:
+                    if left_window != text:
+                        left = self._isolate_largest_section(left_window)
+                    else:
+                        left = left_window
+                else:
+                    sents = self._sentence_model.split(left_window, lang=self._in_lang) or []
+
+                    break_pts = self._compute_breakpoints_from_sentences(left_window, sents)
+
+                    # If left_window == text and we need to split, don't allow choosing full length.
+                    if left_window == text:
+                        desired_max = len(left_window) - 1 if len(left_window) > 1 else 1
+                    else:
+                        desired_max = len(left_window)
+
+                    local_chars_per_token = len(left_window) / max(left_size, 1)
+                    local_target = int(self._preferred_limit * local_chars_per_token) - self._overhead_size
+                    target = max(1, min(desired_max, local_target))
+
+                    # Always end on a breakpoint if any exist.
+                    chosen: Optional[int] = None
+                    if break_pts:
+                        # Prefer the first breakpoint at/after target (slightly over is fine).
+                        i = bisect.bisect_left(break_pts, target)
+                        if i < len(break_pts):
+                            chosen = break_pts[i]
+                        else:
+                            chosen = break_pts[-1]
+                    else:
+                        chosen = target
+
+                    # Fallback:
+                    if chosen is None or chosen <= 0:
+                        chosen = target
+                    elif left_window == text and chosen >= len(left_window):
+                        chosen = target
+
+                    left = left_window[:chosen]
+
+                # If the cut lands inside an alphanumeric section, back up to the last whitespace.
+                # This is a best-effort heuristic: punctuation-delimited numeric forms such as
+                # "1,000" or "1.0" may instead split at punctuation boundaries.
+                cut = len(left)
+                if 0 < cut < len(text) and text[cut - 1].isalnum() and text[cut].isalnum():
+                    m = re.search(r"\s(?=\S*$)", left)
+                    if m:
+                        left = left[:m.end()]
+
+                # Worst-case, but extremely unlikely to happen.
+                if left == "" and text != "":
+                    left = text[:1]
+
                 return left, text[len(left):]
 
-            char_per_size = len(left) / left_size
-
-
-            limit = int(self._limit * char_per_size) - self._overhead_size
-
+            char_per_size = len(left_window) / max(left_size, 1)
+            limit = int(max_limit * char_per_size) - self._overhead_size
             if limit < 1:
-            # Caused by an unusually large overhead relative to text.
-            # This is unlikely to occur except during testing of small text limits.
-            # Recalculate soft limit by subtracting overhead from limit before
-            # applying chars_per_size weighting.
-                limit = max(1, int((self._limit - self._overhead_size) * char_per_size))
+                # Caused by an unusually large overhead relative to text.
+                # This is unlikely to occur except during testing of small text limits.
+                # Recalculate soft limit by subtracting overhead from limit before
+                # applying chars_per_size weighting.
+                limit = max(1, int((max_limit - self._overhead_size) * char_per_size))
