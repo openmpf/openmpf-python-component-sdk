@@ -91,6 +91,14 @@ class ImageJob(NamedTuple):
     feed_forward_location: Optional[ImageLocation] = None
 
 
+class AllImageLocationsJob(NamedTuple):
+    job_name: str
+    data_uri: str
+    job_properties: Mapping[str, str]
+    media_properties: Mapping[str, str]
+    feed_forward_locations: List[ImageLocation]
+
+
 class AudioJob(NamedTuple):
     job_name: str
     data_uri: str
@@ -115,6 +123,14 @@ class GenericJob(NamedTuple):
     job_properties: Mapping[str, str]
     media_properties: Mapping[str, str]
     feed_forward_track: Optional[GenericTrack] = None
+
+
+class AllGenericTracksJob(NamedTuple):
+    job_name: str
+    data_uri: str
+    job_properties: Mapping[str, str]
+    media_properties: Mapping[str, str]
+    feed_forward_tracks: List[GenericTrack]
 
 
 @enum.unique
