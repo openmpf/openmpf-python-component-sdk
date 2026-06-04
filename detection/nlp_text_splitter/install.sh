@@ -71,6 +71,7 @@ main() {
     install_text_splitter "$text_splitter_dir"
     install_py_torch "$gpu_enabled"
     download_wtp_models "$wtp_models_dir" "${wtp_models[@]}"
+    download_sat_tokenizer "$wtp_models_dir" "${wtp_models[@]}"
     download_spacy_models "${spacy_models[@]}"
 }
 
@@ -121,6 +122,26 @@ download_wtp_models() {
             "from huggingface_hub import snapshot_download; \
             snapshot_download(repo_id='${hf_owner}/${model_name}', local_dir='${model_dir}')"
 
+    done
+}
+
+download_sat_tokenizer() {
+    local wtp_models_dir=$1
+    shift
+    local model_names=("$@")
+
+    for model_name in "${model_names[@]}"; do
+        if [[ $model_name == sat-* ]]; then
+            local tokenizer_name="xlm-roberta-base"
+            local tokenizer_dir="$wtp_models_dir/$tokenizer_name"
+
+            echo "Found SaT model '${model_name}'. Downloading shared tokenizer '${tokenizer_name}' (used by all SaT models) into '${tokenizer_dir}'."
+
+            python -c \
+                "from huggingface_hub import snapshot_download; \
+                snapshot_download(repo_id='facebookAI/${tokenizer_name}', local_dir='${tokenizer_dir}')"
+            return
+        fi
     done
 }
 

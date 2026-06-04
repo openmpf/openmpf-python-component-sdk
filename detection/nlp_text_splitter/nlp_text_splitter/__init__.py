@@ -52,6 +52,7 @@ from .wtp_lang_settings import WtpLanguageSettings
 from .newline_behavior import NewLineBehavior
 
 DEFAULT_WTP_MODELS = "/opt/wtp/models"
+SAT_TOKENIZER_MODEL = "xlm-roberta-base"
 
 # If we want to package model installation with this utility in the future:
 MODELS_PATH: Traversable = importlib.resources.files(__name__) / 'models'
@@ -170,14 +171,25 @@ class TextSplitterModel:
         self._default_lang = default_lang
         self._mandatory_wtp_language = (sat_model_name in WTP_MANDATORY_ADAPTOR)
 
-        local_path = self._find_local_model_path(sat_model_name)
+        local_sat_path = self._find_local_model_path(sat_model_name)
+        local_tokenizer_path = self._find_local_model_path(SAT_TOKENIZER_MODEL)
 
-        if local_path:
-            log.info(f"Using downloaded SaT model at {local_path}")
-            self.sat_model = SaT(local_path)
+        if local_sat_path:
+            log.info(f"Using downloaded SaT model at {local_sat_path}")
+            sat_model_name_or_path = local_sat_path
         else:
             log.warning(f"SaT model {sat_model_name} not found locally; downloading from Hugging Face.")
-            self.sat_model = SaT(sat_model_name)
+            sat_model_name_or_path = sat_model_name
+
+        sat_args = {}
+        if local_tokenizer_path:
+            log.info(f"Using downloaded SaT tokenizer at {local_tokenizer_path}")
+            sat_args["tokenizer_name_or_path"] = local_tokenizer_path
+        else:
+            log.warning(f"SaT tokenizer {SAT_TOKENIZER_MODEL} not found locally; downloading from Hugging Face.")
+
+        self.sat_model = SaT(sat_model_name_or_path, **sat_args)
+
 
         # Move model to device; SaT runtime benefits from half precision on GPU.
         if device == "cuda":
