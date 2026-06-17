@@ -64,8 +64,8 @@ class SubjectTrackingJob(NamedTuple):
 
     video_jobs: Sequence[VideoDetectionJobResults]
     image_jobs: Sequence[ImageDetectionJobResults]
-    audio_jobs: Sequence[AudioJobResults]
-    generic_jobs: Sequence[GenericJobResults]
+    audio_jobs: Sequence[AudioDetectionJobResults]
+    generic_jobs: Sequence[GenericDetectionJobResults]
 
 
 class VideoDetectionJobResults(NamedTuple):
@@ -88,7 +88,7 @@ class ImageDetectionJobResults(NamedTuple):
     media_properties: Mapping[str, str]
     results: Mapping[TrackId, mpf.ImageLocation]
 
-class AudioJobResults(NamedTuple):
+class AudioDetectionJobResults(NamedTuple):
     data_uri: str
     media_id: MediaId
     algorithm: str
@@ -98,7 +98,7 @@ class AudioJobResults(NamedTuple):
     results: Mapping[TrackId, mpf.AudioTrack]
 
 
-class GenericJobResults(NamedTuple):
+class GenericDetectionJobResults(NamedTuple):
     data_uri: str
     media_id: MediaId
     algorithm: str
